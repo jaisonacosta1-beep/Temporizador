@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Control de Advertencias y Temporizadores Activos</title>
+<title>Módulo Satélite de Alertas</title>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
@@ -19,6 +19,7 @@
     --success: #00ff88;
     --blue: #3b82f6;
     --info: #0dcaf0;
+    --radar-green: #00ff41;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
 body { background: var(--dark); color: white; overflow-x: hidden; padding-bottom: 50px; }
@@ -36,6 +37,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 .btn-gold { background: var(--gold); color: black; }
 .btn-blue { background: var(--blue); color: white; }
 .btn-red { background: var(--red); color: white; }
+.btn-whatsapp { background: #25D366; color: white; margin-top: 15px; }
+.btn-whatsapp:hover { background: #128C7E; }
 
 .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
 .driver-card { background: var(--card); border-radius: 15px; padding: 20px; border: 1px solid #222; display: flex; flex-direction: column; justify-content: space-between; }
@@ -44,17 +47,42 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 .badge { padding: 5px 10px; border-radius: 5px; font-size: 0.7rem; font-weight: bold; font-family: 'Orbitron'; display: inline-block; margin-top: 5px; }
 .bg-run { background: var(--orange); color: white; }
 .bg-off { background: #333; color: #aaa; }
+.bg-creado { background: var(--info); color: black; }
 
-/* Vista del Chofer */
+/* TEMPORIZADOR DIGITAL */
+.timer-container { margin: 25px auto; display: inline-block; background: linear-gradient(145deg, #0a0a0a, #151515); padding: 18px 35px; border-radius: 15px; border: 2px solid currentColor; box-shadow: inset 0 0 20px rgba(0,0,0,0.9), 0 8px 25px rgba(0,0,0,0.6); }
+.timer-box { font-family: 'Orbitron', sans-serif; font-size: 3.8rem; font-weight: 900; letter-spacing: 4px; text-shadow: 0 0 20px currentColor; line-height: 1; }
+
+/* EFECTOS RADAR GPS (FALSO) */
+.radar-panel { border: 2px solid var(--radar-green); background: #000; padding: 15px; border-radius: 15px; text-align: left; position: relative; margin-top: 30px; box-shadow: 0 0 15px rgba(0, 255, 65, 0.2); }
+.radar-screen { width: 100%; height: 160px; background: #001a00; border-radius: 10px; position: relative; overflow: hidden; border: 1px solid var(--radar-green); display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+.radar-grid { position: absolute; width: 100%; height: 100%; background-image: linear-gradient(#003300 1px, transparent 1px), linear-gradient(90deg, #003300 1px, transparent 1px); background-size: 20px 20px; opacity: 0.5; }
+.radar-sweep { position: absolute; width: 200px; height: 200px; border-radius: 50%; border: 2px solid rgba(0, 255, 65, 0.8); border-right-color: transparent; border-bottom-color: transparent; animation: spin 2s linear infinite; box-shadow: 0 0 20px rgba(0, 255, 65, 0.4); }
+.radar-blip { position: absolute; width: 8px; height: 8px; background: var(--radar-green); border-radius: 50%; box-shadow: 0 0 15px var(--radar-green); animation: blink 2s infinite; transition: all 1s ease; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+@keyframes blink { 0%, 50% { opacity: 0; } 51%, 100% { opacity: 1; } }
+.gps-data { color: var(--radar-green); font-family: 'Orbitron', monospace; font-size: 0.85rem; line-height: 1.5; }
+
 .chofer-container { max-width: 600px; margin: 40px auto; padding: 20px; text-align: center; }
-.timer-box { font-family: 'Orbitron'; font-size: 3.5rem; font-weight: 900; margin: 25px 0; letter-spacing: 2px; }
 .img-alerta { width: 100%; max-height: 350px; object-fit: contain; border-radius: 12px; margin-top: 20px; border: 1px solid #333; background: #000; }
 
 .link-box { background: #000; padding: 10px; border-radius: 8px; border: 1px solid #333; font-size: 0.8rem; color: var(--info); word-break: break-all; margin-top: 10px; display: flex; align-items: center; justify-content: space-between; }
 .copy-btn { background: none; border: none; color: var(--gold); cursor: pointer; padding-left: 10px; }
+.login-box { max-width: 400px; margin: 10vh auto 0 auto; background: var(--card); padding: 40px; border-radius: 20px; border: 1px solid #333; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
 </style>
 </head>
 <body>
+
+<div id="panel-login-admin" style="display: none;">
+    <div class="login-box">
+        <h2 style="font-family:'Orbitron'; color:var(--red); margin-bottom:15px;"><i class="fa-solid fa-lock"></i> CONTROL SEGURO</h2>
+        <p style="color:#aaa; font-size:0.9rem; margin-bottom:25px;">Introduce la clave maestra para gestionar los temporizadores.</p>
+        <form onsubmit="verificarPasswordAdmin(event)">
+            <input type="password" id="pass-modulo" placeholder="Contraseña Maestra" style="text-align:center; letter-spacing:5px; margin-bottom:20px;" required>
+            <button type="submit" class="btn btn-red">ENTRAR AL MÓDULO</button>
+        </form>
+    </div>
+</div>
 
 <div id="panel-admin" style="display: none;">
     <header>
@@ -63,6 +91,15 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
     </header>
     
     <div class="container">
+        <div class="form-panel" style="border-top: 3px solid #25D366; padding: 20px;">
+            <h2 style="font-family:'Orbitron'; color:#25D366; margin-bottom:10px; font-size:1rem;"><i class="fa-brands fa-whatsapp"></i> CONFIGURACIÓN DE AGENTE</h2>
+            <p style="color:#aaa; font-size:0.8rem; margin-bottom:15px;">Establece el número de teléfono al que los conductores serán redirigidos cuando necesiten contactarte desde el panel de alerta.</p>
+            <form style="display:flex; gap:10px; flex-wrap:wrap;" onsubmit="guardarNumeroAgente(event)">
+                <input type="text" id="admin-num-agente" placeholder="Ej: 50761234567" required style="flex: 1; min-width: 200px;">
+                <button type="submit" class="btn btn-green" style="width: auto; padding: 12px 20px; background: #25D366; color: black;"><i class="fa-solid fa-save"></i> GUARDAR NÚMERO</button>
+            </form>
+        </div>
+
         <div class="form-panel">
             <h2 style="font-family:'Orbitron'; color:var(--gold); margin-bottom:15px; font-size:1.1rem;">NUEVA ALERTA TEMPORIZADA</h2>
             <form id="form-alerta" onsubmit="activarAlerta(event)">
@@ -99,7 +136,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
                     <input type="file" id="alerta-foto" accept="image/*">
                 </div>
                 <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="btn btn-gold" id="btn-submit-alerta"><i class="fa-solid fa-bolt"></i> ACTIVAR AHORA</button>
+                    <button type="submit" class="btn btn-gold" id="btn-submit-alerta"><i class="fa-solid fa-bolt"></i> CREAR ENLACE</button>
                     <button type="button" class="btn btn-red" style="width: auto;" onclick="removerAlerta()" title="Apagar temporizador activo"><i class="fa-solid fa-power-off"></i></button>
                 </div>
             </form>
@@ -112,21 +149,40 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 
 <div id="panel-chofer" style="display: none;">
     <div class="chofer-container">
-        <div id="chofer-box-alerta" class="form-panel" style="transition: 0.3s;">
+        <div id="chofer-box-alerta" class="form-panel" style="transition: 0.3s; padding: 30px;">
             <h1 id="chofer-titulo-estado" style="font-family: 'Orbitron'; margin-bottom: 10px;">NOTIFICACIÓN GENERAL</h1>
             <hr style="border: 0; border-top: 1px dashed rgba(255,255,255,0.2); margin: 15px 0;">
             <p id="chofer-motivo" style="font-size: 1.1rem; line-height: 1.6; white-space: pre-wrap; font-weight: 600;"></p>
             
-            <div class="timer-box" id="timer-display">00:00:00</div>
+            <div class="timer-container" id="timer-wrapper">
+                <div class="timer-box" id="timer-display">00:00:00</div>
+            </div>
             
             <div id="container-img-chofer"></div>
-            <p style="font-size: 0.75rem; color: #666; margin-top: 25px; font-style: italic;">Panel de Alertas Integrado - Master Mobility OS</p>
+
+            <div class="radar-panel" id="panel-gps" style="display:none;">
+                <h3 style="color: var(--radar-green); font-family: 'Orbitron'; margin-bottom: 10px; font-size: 1rem;"><i class="fa-solid fa-satellite-dish"></i> SATÉLITE DE RASTREO ACTIVO</h3>
+                <div class="radar-screen">
+                    <div class="radar-grid"></div>
+                    <div class="radar-sweep"></div>
+                    <div class="radar-blip" id="fake-blip"></div>
+                </div>
+                <div class="gps-data">
+                    <p>ESTADO: <span style="font-weight:bold;" id="gps-status-txt">FIJANDO UBICACIÓN...</span></p>
+                    <p>LAT: <span id="gps-lat">8.4287</span> N</p>
+                    <p>LON: <span id="gps-lon">-82.4321</span> W</p>
+                    <p style="font-size:0.7rem; color:#00aa2b; margin-top:5px;">SISTEMA DE GEOLOCALIZACIÓN VINCULADO</p>
+                </div>
+            </div>
+
+            <a id="btn-contact-agent" href="#" target="_blank" class="btn btn-whatsapp" style="display: none; text-decoration: none; padding: 18px; font-size: 1.1rem;"><i class="fa-brands fa-whatsapp" style="font-size: 1.3rem;"></i> CONTACTAR A UN AGENTE</a>
+
+            <p style="font-size: 0.75rem; color: #666; margin-top: 30px; font-style: italic;">Panel de Alertas Integrado - Master Mobility OS</p>
         </div>
     </div>
 </div>
 
 <script>
-// Configuración de Firebase unificada de tu base de datos actual
 const firebaseConfig = {
     apiKey: "AIzaSyB2tSowCQwfncdpjQOYEYOEKLrDaeeap48",
     authDomain: "personal-car-19faa.firebaseapp.com",
@@ -141,44 +197,71 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 
 let appData = { conductores: [], vehiculos: [], alertas: {} };
-let currentTgConfig = { token: '', chat: '' };
+let currentTgConfig = { token: '', chat: '', telefono_agente: '' };
 let choferUrlId = new URLSearchParams(window.location.search).get('driver');
+let timerInterval = null;
 
-// Inicialización de Vistas
 window.addEventListener('DOMContentLoaded', () => {
     if (choferUrlId) {
         document.getElementById('panel-chofer').style.display = 'block';
         escucharAlertasChofer(choferUrlId);
+        iniciarRastreoFalso();
     } else {
-        document.getElementById('panel-admin').style.display = 'block';
-        conectarBaseDatosAdmin();
+        document.getElementById('panel-login-admin').style.display = 'block';
     }
-    // Cargar credenciales del Bot de Telegram registradas en el ERP principal
+    
     db.collection('sistema').doc('config_portal').onSnapshot(doc => {
         if (doc.exists) {
-            currentTgConfig.token = doc.data().tgToken || '';
-            currentTgConfig.chat = doc.data().tgChat || '';
+            const data = doc.data();
+            currentTgConfig.token = data.tgToken || '';
+            currentTgConfig.chat = data.tgChat || '';
+            currentTgConfig.telefono_agente = data.telefono_agente || '';
+            
+            if(document.getElementById('admin-num-agente')) {
+                document.getElementById('admin-num-agente').value = currentTgConfig.telefono_agente;
+            }
+            if(choferUrlId && currentTgConfig.telefono_agente) {
+                const btnAgente = document.getElementById('btn-contact-agent');
+                const cleanNum = currentTgConfig.telefono_agente.replace(/[^0-9]/g, ''); 
+                btnAgente.href = `https://wa.me/${cleanNum}?text=Hola,%20escribo%20desde%20el%20panel%20de%20alertas%20temporizadas.`;
+                btnAgente.style.display = 'block';
+            }
         }
     });
-    // Bucle constante de actualización milimétrica de relojes en pantalla
-    setInterval(actualizarRelojesConsistentes, 1000);
 });
 
-// Sincronización en tiempo real para el Panel de Administración
+function verificarPasswordAdmin(e) {
+    e.preventDefault();
+    const pass = document.getElementById('pass-modulo').value;
+    if (pass === "507Admin") {
+        document.getElementById('panel-login-admin').style.display = 'none';
+        document.getElementById('panel-admin').style.display = 'block';
+        conectarBaseDatosAdmin();
+    } else {
+        alert("Contraseña incorrecta.");
+    }
+}
+
+async function guardarNumeroAgente(e) {
+    e.preventDefault();
+    const num = document.getElementById('admin-num-agente').value;
+    try {
+        await db.collection('sistema').doc('config_portal').set({ telefono_agente: num }, { merge: true });
+        alert("Número de agente actualizado.");
+    } catch (err) { alert(err.message); }
+}
+
 function conectarBaseDatosAdmin() {
-    // Escucha permanente de Vehículos
     db.collection('vehiculos').onSnapshot(snap => {
         appData.vehiculos = [];
         snap.forEach(doc => appData.vehiculos.push({ id: doc.id, ...doc.data() }));
         renderizarAdminFlota();
     });
 
-    // Escucha permanente de Conductores
     db.collection('conductores').onSnapshot(snap => {
         appData.conductores = [];
         snap.forEach(doc => appData.conductores.push({ id: doc.id, ...doc.data() }));
         
-        // Actualizar dropdown selector del formulario
         const select = document.getElementById('select-chofer');
         const selectedValue = select.value;
         select.innerHTML = '<option value="">Seleccione un chofer...</option>' + 
@@ -188,12 +271,17 @@ function conectarBaseDatosAdmin() {
         renderizarAdminFlota();
     });
 
-    // Escucha permanente de las alertas asociadas
     db.collection('alertas_temporizador').onSnapshot(snap => {
         appData.alertas = {};
         snap.forEach(doc => { appData.alertas[doc.id] = doc.data(); });
         renderizarAdminFlota();
         cargarAlertaExistente();
+        
+        // Si somos admin, mantenemos los relojes actualizados en el panel
+        if(!choferUrlId) {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(actualizarRelojesAdmin, 1000);
+        }
     });
 }
 
@@ -215,29 +303,35 @@ function renderizarAdminFlota() {
     contenedor.innerHTML = '';
 
     if (appData.conductores.length === 0) {
-        contenedor.innerHTML = '<p style="color: #666;">No se encontraron conductores registrados en el ERP principal.</p>';
+        contenedor.innerHTML = '<p style="color: #666;">No se encontraron conductores registrados.</p>';
         return;
     }
 
     appData.conductores.forEach(c => {
         const alerta = appData.alertas[c.id];
-        const tieneTimer = alerta && alerta.activo;
+        const tieneAlerta = alerta && alerta.activo;
         const auto = appData.vehiculos.find(v => v.placa === c.auto_asignado);
         const autoText = auto ? `${auto.modelo} (${auto.placa})` : 'Sin unidad asignada';
         
-        let statusBadge = `<span class="badge bg-off"><i class="fa-solid fa-circle"></i> Inactivo</span>`;
+        let statusBadge = `<span class="badge bg-off"><i class="fa-solid fa-circle"></i> Sin Alertas</span>`;
         let timerDisplayHtml = '';
         
-        if (tieneTimer) {
-            statusBadge = `<span class="badge bg-run" style="background:${alerta.color === 'red' ? 'var(--red)' : 'var(--orange)'}"><i class="fa-solid fa-hourglass-start fa-spin"></i> Corriendo</span>`;
-            timerDisplayHtml = `<div style="font-family:'Orbitron'; font-size:1.3rem; font-weight:bold; margin-top:10px; color:#fff;" id="admin-timer-${c.id}">Calculando...</div>`;
+        if (tieneAlerta) {
+            if (alerta.estado === 'creado') {
+                statusBadge = `<span class="badge bg-creado"><i class="fa-solid fa-link"></i> Link Enviado (En Espera)</span>`;
+                let mins = Math.floor(alerta.duracionMs / 60000);
+                timerDisplayHtml = `<div style="font-family:'Orbitron'; font-size:1.1rem; font-weight:bold; margin-top:10px; color:var(--info);">Esperando que abra... (${mins}m)</div>`;
+            } else if (alerta.estado === 'corriendo') {
+                const colorActual = alerta.color === 'red' ? 'var(--red)' : 'var(--orange)';
+                statusBadge = `<span class="badge" style="background:${colorActual}; color:white;"><i class="fa-solid fa-hourglass-start fa-spin"></i> Reloj Corriendo</span>`;
+                timerDisplayHtml = `<div style="font-family:'Orbitron'; font-size:1.4rem; font-weight:bold; margin-top:10px; color:${colorActual}; text-shadow: 0 0 5px rgba(255,255,255,0.2);" id="admin-timer-${c.id}">00:00:00</div>`;
+            }
         }
 
-        // Crear el Link único absoluto para este conductor
         const linkUnico = `${window.location.origin}${window.location.pathname}?driver=${c.id}`;
 
         contenedor.innerHTML += `
-            <div class="driver-card ${tieneTimer ? 'active-timer' : ''}" style="${tieneTimer ? 'border-color:' + (alerta.color === 'red' ? 'var(--red)' : 'var(--orange)') : ''}">
+            <div class="driver-card" style="${tieneAlerta ? 'border-color:' + (alerta.color === 'red' ? 'var(--red)' : 'var(--orange)') + '; box-shadow: 0 0 10px rgba(0,0,0,0.5);' : ''}">
                 <div>
                     <h3 style="color: var(--gold); font-size: 1.1rem;">${c.nombre}</h3>
                     <p style="font-size:0.8rem; color:#aaa; margin-top:3px;"><i class="fa-solid fa-car"></i> ${autoText}</p>
@@ -248,19 +342,33 @@ function renderizarAdminFlota() {
                 <div style="margin-top:15px;">
                     <div class="link-box">
                         <span>Link Único</span>
-                        <button class="copy-btn" onclick="copiarLink('${linkUnico}')" title="Copiar enlace rápido"><i class="fa-regular fa-copy"></i> Copiar</button>
+                        <button class="copy-btn" onclick="copiarLink('${linkUnico}')"><i class="fa-regular fa-copy"></i> Copiar</button>
                     </div>
-                    <button class="btn btn-blue" style="padding:8px; font-size:0.7rem; margin-top:10px; font-family:'Inter'; font-weight:600;" onclick="seleccionarChoferForm('${c.id}')"><i class="fa-solid fa-sliders"></i> Configurar Alerta</button>
+                    <button class="btn btn-blue" style="padding:8px; font-size:0.7rem; margin-top:10px; font-family:'Inter';" onclick="seleccionarChoferForm('${c.id}')"><i class="fa-solid fa-sliders"></i> Configurar Alerta</button>
                 </div>
             </div>
         `;
     });
 }
 
-function seleccionarChoferForm(id) {
-    document.getElementById('select-chofer').value = id;
-    cargarAlertaExistente();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+// Lógica de actualización solo para la vista del Administrador
+function actualizarRelojesAdmin() {
+    const ahora = Date.now();
+    appData.conductores.forEach(c => {
+        const alerta = appData.alertas[c.id];
+        if (alerta && alerta.activo && alerta.estado === 'corriendo') {
+            const el = document.getElementById(`admin-timer-${c.id}`);
+            if (el) {
+                const restante = alerta.expiresAt - ahora;
+                if (restante <= 0) {
+                    el.innerText = "TIEMPO AGOTADO";
+                    el.style.color = "var(--red)";
+                } else {
+                    el.innerText = formatearMs(restante);
+                }
+            }
+        }
+    });
 }
 
 async function activarAlerta(e) {
@@ -279,10 +387,7 @@ async function activarAlerta(e) {
     const unidad = document.getElementById('alerta-unidad').value;
 
     let minutos = unidad === 'horas' ? tiempoVal * 60 : tiempoVal;
-    
-    // Tiempos absolutos desde el momento de guardado (Admin)
-    const ahora = Date.now();
-    const expiracion = ahora + (minutos * 60 * 1000);
+    const duracionMs = minutos * 60 * 1000;
 
     try {
         let imageUrl = '';
@@ -293,42 +398,40 @@ async function activarAlerta(e) {
             await ref.put(f);
             imageUrl = await ref.getDownloadURL();
         } else if (appData.alertas[choferId] && appData.alertas[choferId].foto) {
-            imageUrl = appData.alertas[choferId].foto; // Conservar anterior si ya existía
+            imageUrl = appData.alertas[choferId].foto;
         }
 
+        // Creamos la alerta en estado 'creado' (en espera de que el chofer abra el link)
         await db.collection('alertas_temporizador').doc(choferId).set({
             choferId: choferId,
             choferNombre: chofer.nombre,
             motivo: motivo,
             color: color,
             foto: imageUrl,
-            createdAt: ahora,
-            expiresAt: expiracion,
+            duracionMs: duracionMs,
+            expiresAt: 0,
+            estado: 'creado',
             notifiedTelegram: false,
             activo: true
         });
 
-        // Alerta inmediata a tu Telegram de que acabas de activarlo
-        enviarNotificacionTelegram(`⏳ *TEMPORIZADOR ACTIVADO*\nConductor: ${chofer.nombre}\nMotivo: ${motivo}\nTiempo asignado: ${tiempoVal} ${unidad}.\nEl reloj ya está corriendo.`);
-
-        alert("¡Temporizador en marcha y corriendo de forma absoluta!");
+        alert("¡Enlace creado! El tiempo empezará a correr cuando el conductor abra el link.");
         document.getElementById('alerta-foto').value = '';
     } catch(err) {
-        alert("Error al activar: " + err.message);
+        alert("Error al crear alerta: " + err.message);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-bolt"></i> ACTIVAR AHORA';
+        btn.innerHTML = '<i class="fa-solid fa-bolt"></i> CREAR ENLACE';
     }
 }
 
 async function removerAlerta() {
     const choferId = document.getElementById('select-chofer').value;
     if (!choferId) return alert("Selecciona un conductor para apagar su alerta.");
-    if (!confirm("¿Deseas dar de baja y remover el temporizador de este conductor?")) return;
+    if (!confirm("¿Deseas remover el temporizador de este conductor?")) return;
 
     try {
         if(appData.alertas[choferId] && appData.alertas[choferId].foto) {
-            // Eliminar imagen del storage para optimizar almacenamiento
             try { await storage.refFromURL(appData.alertas[choferId].foto).delete(); } catch(e){}
         }
         await db.collection('alertas_temporizador').doc(choferId).delete();
@@ -337,24 +440,44 @@ async function removerAlerta() {
     } catch(e) { alert(e.message); }
 }
 
-// Lógica de Renderizado y Monitoreo de Chofer Individual
 let alertaChoferLocal = null;
 function escucharAlertasChofer(id) {
-    db.collection('alertas_temporizador').doc(id).onSnapshot(doc => {
+    db.collection('alertas_temporizador').doc(id).onSnapshot(async (doc) => {
         const caja = document.getElementById('chofer-box-alerta');
+        const wrapper = document.getElementById('timer-wrapper');
+        const panelGps = document.getElementById('panel-gps');
+        
         if (!doc.exists || !doc.data().activo) {
             alertaChoferLocal = null;
+            clearInterval(timerInterval);
             document.getElementById('chofer-titulo-estado').innerText = "SIN ALERTAS ACTIVAS";
-            document.getElementById('chofer-motivo').innerText = "Tu cuenta no registra advertencias pendientes de solución en este momento. Sigue conduciendo de forma responsable.";
+            document.getElementById('chofer-motivo').innerText = "Tu cuenta no registra advertencias pendientes en este momento. Sigue conduciendo de forma responsable.";
             document.getElementById('timer-display').innerText = "00:00:00";
-            document.getElementById('timer-display').style.color = "var(--success)";
+            wrapper.style.color = "var(--success)";
             caja.style.borderColor = "#222";
             document.getElementById('container-img-chofer').innerHTML = '';
+            panelGps.style.display = 'none';
             return;
         }
 
         const data = doc.data();
         alertaChoferLocal = data;
+        panelGps.style.display = 'block';
+        
+        // Si la alerta está recién creada, LA ACTIVAMOS AQUÍ AL ENTRAR EL CHOFER
+        if (data.estado === 'creado') {
+            const ahora = Date.now();
+            const expira = ahora + data.duracionMs;
+            await db.collection('alertas_temporizador').doc(id).update({
+                estado: 'corriendo',
+                expiresAt: expira
+            });
+            alertaChoferLocal.expiresAt = expira;
+            alertaChoferLocal.estado = 'corriendo';
+            
+            // Avisar a admin que el chofer ya abrió el link y empezó a correr
+            enviarNotificacionTelegram(`👀 *LINK ABIERTO*\nEl conductor *${data.choferNombre}* acaba de abrir el enlace de alerta.\n¡El reloj ya está en marcha y no se detendrá!`);
+        }
         
         document.getElementById('chofer-titulo-estado').innerText = data.color === 'red' ? "⚠️ ALERTA CRÍTICA DE EMPRESA" : "🚨 ADVERTENCIA TEMPORIZADA";
         document.getElementById('chofer-motivo').innerText = data.motivo;
@@ -362,7 +485,7 @@ function escucharAlertasChofer(id) {
         const colorVar = data.color === 'red' ? 'var(--red)' : 'var(--orange)';
         caja.style.borderColor = colorVar;
         document.getElementById('chofer-titulo-estado').style.color = colorVar;
-        document.getElementById('timer-display').style.color = colorVar;
+        wrapper.style.color = colorVar;
 
         if (data.foto) {
             document.getElementById('container-img-chofer').innerHTML = `<img src="${data.foto}" class="img-alerta" onclick="window.open('${data.foto}')">`;
@@ -370,55 +493,42 @@ function escucharAlertasChofer(id) {
             document.getElementById('container-img-chofer').innerHTML = '';
         }
         
-        actualizarRelojesConsistentes();
+        // Iniciar el bucle de conteo local para el chofer
+        clearInterval(timerInterval);
+        timerInterval = setInterval(actualizarRelojChofer, 1000);
+        actualizarRelojChofer();
     });
 }
 
-// Función centralizada encargada de restar el tiempo exacto sin desfases
-function actualizarRelojesConsistentes() {
+function actualizarRelojChofer() {
+    if (!alertaChoferLocal || alertaChoferLocal.estado === 'creado') return;
+    
     const ahora = Date.now();
-
-    // 1. Si estamos en vista Chofer
-    if (choferUrlId && alertaChoferLocal) {
-        const restante = alertaChoferLocal.expiresAt - ahora;
-        if (restante <= 0) {
-            document.getElementById('timer-display').innerText = "00:00:00";
-            evaluarExpiracionServidor(alertaChoferLocal.choferId, alertaChoferLocal);
-        } else {
-            document.getElementById('timer-display').innerText = formatearMs(restante);
+    const restante = alertaChoferLocal.expiresAt - ahora;
+    
+    if (restante <= 0) {
+        document.getElementById('timer-display').innerText = "00:00:00";
+        evaluarExpiracionServidor(alertaChoferLocal.choferId, alertaChoferLocal);
+        document.getElementById('gps-status-txt').innerText = "VEHÍCULO INMOVILIZADO";
+        document.getElementById('gps-status-txt').style.color = "var(--red)";
+        const blip = document.querySelector('.radar-blip');
+        if(blip) {
+            blip.style.animation = "none";
+            blip.style.background = "var(--red)";
+            blip.style.boxShadow = "0 0 15px var(--red)";
         }
-    }
-
-    // 2. Si estamos en vista Administrador, actualizar contadores de las tarjetas en vivo
-    if (!choferUrlId && appData.conductores.length > 0) {
-        appData.conductores.forEach(c => {
-            const alerta = appData.alertas[c.id];
-            if (alerta && alerta.activo) {
-                const el = document.getElementById(`admin-timer-${c.id}`);
-                if (el) {
-                    const restante = alerta.expiresAt - ahora;
-                    if (restante <= 0) {
-                        el.innerText = "TIEMPO AGOTADO";
-                        el.style.color = "var(--red)";
-                        evaluarExpiracionServidor(c.id, alerta);
-                    } else {
-                        el.innerText = formatearMs(restante);
-                        el.style.color = "white";
-                    }
-                }
-            }
-        });
+        clearInterval(timerInterval); // Detener para que no consuma memoria al llegar a cero
+    } else {
+        document.getElementById('timer-display').innerText = formatearMs(restante);
     }
 }
 
-// Disparador único blindado para evitar envíos duplicados a Telegram
 async function evaluarExpiracionServidor(id, alerta) {
     if (alerta.notifiedTelegram === false) {
-        // Bloquear localmente de inmediato para evitar bucles concurrentes
         alerta.notifiedTelegram = true; 
         try {
             await db.collection('alertas_temporizador').doc(id).update({ notifiedTelegram: true });
-            enviarNotificacionTelegram(`🚨 *¡TIEMPO AGOTADO!*\nEl temporizador del conductor *${alerta.choferNombre}* ha llegado estrictamente a 0.\nMotivo asignado: ${alerta.motivo}`);
+            enviarNotificacionTelegram(`🚨 *¡TIEMPO AGOTADO!*\nEl temporizador del conductor *${alerta.choferNombre}* ha llegado a 0.\nMotivo asignado: ${alerta.motivo}`);
         } catch(e) { console.log(e); }
     }
 }
@@ -440,14 +550,42 @@ function enviarNotificacionTelegram(msg) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chat_id: currentTgConfig.chat, text: msg, parse_mode: 'Markdown' })
-        }).catch(e => console.log("Fallo envío Telegram: ", e));
+        }).catch(e => console.log("Telegram Error: ", e));
     }
 }
 
 function copiarLink(txt) {
     navigator.clipboard.writeText(txt).then(() => {
-        alert("Enlace único copiado al portapapeles de tu celular. Ya puedes enviárselo por WhatsApp.");
+        alert("Enlace único copiado al portapapeles.");
     }).catch(() => { alert("Enlace: " + txt); });
+}
+
+// LOGICA DE RASTREO FALSO (COORDENADAS DE DAVID, CHIRIQUÍ)
+function iniciarRastreoFalso() {
+    const statuses = ["RASTREANDO SEÑAL...", "CONECTANDO A SATÉLITE 04...", "TRIANGULANDO POSICIÓN...", "SEÑAL ESTABLE - UBICADO"];
+    let statusIndex = 0;
+    
+    setInterval(() => {
+        if(alertaChoferLocal && alertaChoferLocal.estado === 'corriendo' && (alertaChoferLocal.expiresAt - Date.now() > 0)) {
+            // Latitud y Longitud base en David
+            const latFalsa = 8.4200 + (Math.random() * 0.0099);
+            const lonFalsa = -82.4300 - (Math.random() * 0.0099);
+            
+            document.getElementById('gps-lat').innerText = latFalsa.toFixed(4);
+            document.getElementById('gps-lon').innerText = lonFalsa.toFixed(4);
+            
+            const blip = document.getElementById('fake-blip');
+            if(blip) {
+                blip.style.top = (40 + (Math.random() * 20)) + '%';
+                blip.style.left = (40 + (Math.random() * 20)) + '%';
+            }
+            
+            if(statusIndex < statuses.length - 1) {
+                statusIndex++;
+                document.getElementById('gps-status-txt').innerText = statuses[statusIndex];
+            }
+        }
+    }, 4000); 
 }
 </script>
 </body>

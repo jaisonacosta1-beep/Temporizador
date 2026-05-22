@@ -37,6 +37,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 .btn-gold { background: var(--gold); color: black; }
 .btn-blue { background: var(--blue); color: white; }
 .btn-red { background: var(--red); color: white; }
+.btn-green { background: var(--success); color: black; }
 .btn-whatsapp { background: #25D366; color: white; margin-top: 15px; }
 .btn-whatsapp:hover { background: #128C7E; }
 
@@ -47,51 +48,68 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 .badge { padding: 5px 10px; border-radius: 5px; font-size: 0.7rem; font-weight: bold; font-family: 'Orbitron'; display: inline-block; margin-top: 5px; }
 .bg-run { background: var(--orange); color: white; }
 .bg-off { background: #333; color: #aaa; }
-.bg-creado { background: var(--info); color: black; }
+.bg-pagado { background: var(--success); color: black; }
 
-/* TEMPORIZADOR DIGITAL ADAPTABLE */
+/* TEMPORIZADOR ELÁSTICO */
 .timer-container { 
     margin: 15px auto; 
-    display: flex; 
-    justify-content: center;
     background: linear-gradient(145deg, #0a0a0a, #151515); 
-    padding: 15px 5px; 
+    padding: 15px 10px; 
     border-radius: 15px; 
     border: 2px solid currentColor; 
     box-shadow: inset 0 0 20px rgba(0,0,0,0.9), 0 8px 25px rgba(0,0,0,0.6); 
     width: 100%;
-    max-width: 100%;
-    overflow: hidden;
 }
 .timer-box { 
     font-family: 'Orbitron', sans-serif; 
-    font-size: clamp(2.2rem, 11vw, 3.8rem); /* Se adapta dinámicamente al ancho de la pantalla */
+    font-size: 13vw; 
     font-weight: 900; 
     letter-spacing: 2px; 
-    text-shadow: 0 0 20px currentColor; 
+    text-shadow: 0 0 15px currentColor; 
     line-height: 1; 
     white-space: nowrap;
+    text-align: center;
 }
+@media (min-width: 500px) { .timer-box { font-size: 4rem; } }
 
-/* EFECTOS RADAR GPS COMPACTO */
-.radar-panel { 
-    border: 2px solid var(--radar-green); 
-    background: #000; 
-    padding: 10px; 
-    border-radius: 12px; 
-    text-align: left; 
-    position: relative; 
-    margin: 15px auto 25px auto; 
-    box-shadow: 0 0 15px rgba(0, 255, 65, 0.2); 
-    max-width: 320px; 
+/* GPS REALISTA (TELEMETRÍA) */
+.telemetry-panel {
+    background: #050505;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
 }
-.radar-screen { width: 100%; height: 100px; background: #001a00; border-radius: 8px; position: relative; overflow: hidden; border: 1px solid var(--radar-green); display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
-.radar-grid { position: absolute; width: 100%; height: 100%; background-image: linear-gradient(#003300 1px, transparent 1px), linear-gradient(90deg, #003300 1px, transparent 1px); background-size: 20px 20px; opacity: 0.5; }
-.radar-sweep { position: absolute; width: 140px; height: 140px; border-radius: 50%; border: 2px solid rgba(0, 255, 65, 0.8); border-right-color: transparent; border-bottom-color: transparent; animation: spin 2s linear infinite; box-shadow: 0 0 20px rgba(0, 255, 65, 0.4); }
-.radar-blip { position: absolute; width: 6px; height: 6px; background: var(--radar-green); border-radius: 50%; box-shadow: 0 0 15px var(--radar-green); animation: blink 2s infinite; transition: all 1s ease; }
-@keyframes spin { 100% { transform: rotate(360deg); } }
-@keyframes blink { 0%, 50% { opacity: 0; } 51%, 100% { opacity: 1; } }
-.gps-data { color: var(--radar-green); font-family: 'Orbitron', monospace; font-size: 0.75rem; line-height: 1.4; }
+.telemetry-map {
+    width: 70px;
+    height: 70px;
+    border-radius: 8px;
+    background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Satellite_view_of_Panama.jpg/320px-Satellite_view_of_Panama.jpg') center/cover;
+    position: relative;
+    border: 1px solid var(--info);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.telemetry-map::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(13, 202, 240, 0.2);
+}
+.telemetry-dot {
+    position: absolute; top: 50%; left: 50%;
+    width: 6px; height: 6px; background: red; border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px red, 0 0 5px red;
+    animation: pulse 1s infinite;
+    z-index: 2;
+}
+@keyframes pulse { 0% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; } }
+.telemetry-data { text-align: left; font-family: 'Orbitron', monospace; font-size: 0.65rem; color: #aaa; flex: 1; line-height: 1.4; }
+.telemetry-data span.val { color: var(--info); font-weight: bold; }
+.telemetry-status { background: rgba(13, 202, 240, 0.1); color: var(--info); padding: 3px 6px; border-radius: 3px; display: inline-block; margin-bottom: 4px; border: 1px solid var(--info); font-size: 0.6rem; font-weight: bold; }
 
 .chofer-container { max-width: 600px; margin: 20px auto; padding: 15px; text-align: center; }
 .img-alerta { width: 100%; max-height: 300px; object-fit: contain; border-radius: 12px; margin-top: 15px; border: 1px solid #333; background: #000; }
@@ -99,6 +117,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 .link-box { background: #000; padding: 10px; border-radius: 8px; border: 1px solid #333; font-size: 0.8rem; color: var(--info); word-break: break-all; margin-top: 10px; display: flex; align-items: center; justify-content: space-between; }
 .copy-btn { background: none; border: none; color: var(--gold); cursor: pointer; padding-left: 10px; }
 .login-box { max-width: 400px; margin: 10vh auto 0 auto; background: var(--card); padding: 40px; border-radius: 20px; border: 1px solid #333; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+
+#chofer-box-exito { padding: 40px 20px; background: rgba(0, 255, 136, 0.05); border: 2px solid var(--success); }
 </style>
 </head>
 <body>
@@ -137,19 +157,27 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
                     <label>Seleccionar Conductor</label>
                     <select id="select-chofer" required onchange="cargarAlertaExistente()"></select>
                 </div>
+                
                 <div class="grid-layout" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 0;">
                     <div class="input-group">
-                        <label>Duración del Temporizador</label>
-                        <input type="number" id="alerta-tiempo" placeholder="Ej: 30" required min="1">
+                        <label>Tiempo Falso (Lo que leerá el chofer)</label>
+                        <input type="text" id="alerta-tiempo-falso" placeholder="Ej: 2 Horas (Opcional)">
                     </div>
-                    <div class="input-group">
-                        <label>Unidad de Tiempo</label>
-                        <select id="alerta-unidad">
-                            <option value="minutos">Minutos</option>
-                            <option value="horas">Horas</option>
-                        </select>
+                    <div style="display: flex; gap: 15px;">
+                        <div class="input-group" style="flex:1;">
+                            <label>Tiempo REAL Restante</label>
+                            <input type="number" id="alerta-tiempo" placeholder="Ej: 30" required min="1">
+                        </div>
+                        <div class="input-group" style="flex:1;">
+                            <label>Unidad (Real)</label>
+                            <select id="alerta-unidad">
+                                <option value="minutos">Minutos</option>
+                                <option value="horas">Horas</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
+
                 <div class="input-group">
                     <label>Color del Panel Visual</label>
                     <select id="alerta-color">
@@ -159,15 +187,15 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
                 </div>
                 <div class="input-group">
                     <label>Motivo o Detalles de la Alerta</label>
-                    <textarea id="alerta-motivo" rows="3" placeholder="Escribe la razón del temporizador (El chofer verá esto obligatoriamente)..." required></textarea>
+                    <textarea id="alerta-motivo" rows="3" placeholder="Escribe la razón del temporizador..." required></textarea>
                 </div>
                 <div class="input-group">
                     <label>Imagen Adjunta de Respaldo (Opcional)</label>
                     <input type="file" id="alerta-foto" accept="image/*">
                 </div>
                 <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="btn btn-gold" id="btn-submit-alerta"><i class="fa-solid fa-bolt"></i> CREAR ENLACE</button>
-                    <button type="button" class="btn btn-red" style="width: auto;" onclick="removerAlerta()" title="Apagar temporizador activo"><i class="fa-solid fa-power-off"></i></button>
+                    <button type="submit" class="btn btn-gold" id="btn-submit-alerta"><i class="fa-solid fa-bolt"></i> INICIAR TIEMPO AHORA</button>
+                    <button type="button" class="btn btn-red" style="width: auto;" onclick="removerAlerta()" title="Apagar / Borrar Alerta"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </form>
         </div>
@@ -179,24 +207,26 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 
 <div id="panel-chofer" style="display: none;">
     <div class="chofer-container">
-        <div id="chofer-box-alerta" class="form-panel" style="transition: 0.3s; padding: 25px 15px;">
-            <h1 id="chofer-titulo-estado" style="font-family: 'Orbitron'; margin-bottom: 10px; font-size: 1.5rem;">NOTIFICACIÓN GENERAL</h1>
-            <hr style="border: 0; border-top: 1px dashed rgba(255,255,255,0.2); margin: 15px 0;">
-            <p id="chofer-motivo" style="font-size: 1rem; line-height: 1.5; white-space: pre-wrap; font-weight: 600; padding: 0 10px;"></p>
+        
+        <div id="chofer-box-alerta" class="form-panel" style="transition: 0.3s; padding: 20px 15px;">
             
-            <div class="radar-panel" id="panel-gps" style="display:none;">
-                <h3 style="color: var(--radar-green); font-family: 'Orbitron'; margin-bottom: 8px; font-size: 0.85rem;"><i class="fa-solid fa-satellite-dish"></i> SATÉLITE DE RASTREO ACTIVO</h3>
-                <div class="radar-screen">
-                    <div class="radar-grid"></div>
-                    <div class="radar-sweep"></div>
-                    <div class="radar-blip" id="fake-blip"></div>
+            <div class="telemetry-panel" id="panel-gps" style="display:none;">
+                <div class="telemetry-map">
+                    <div class="telemetry-dot" id="fake-blip"></div>
                 </div>
-                <div class="gps-data">
-                    <p>ESTADO: <span style="font-weight:bold;" id="gps-status-txt">FIJANDO UBICACIÓN...</span></p>
-                    <p>LAT: <span id="gps-lat">8.4287</span> N | LON: <span id="gps-lon">-82.4321</span> W</p>
-                    <p style="font-size:0.65rem; color:#00aa2b; margin-top:3px;">SISTEMA DE GEOLOCALIZACIÓN VINCULADO</p>
+                <div class="telemetry-data">
+                    <div class="telemetry-status" id="gps-status-txt">VÍNCULO ESTABLECIDO</div><br>
+                    OBJ: <span class="val" id="gps-obj">ACTIVO</span> | VEL: <span class="val" id="gps-vel">0 km/h</span><br>
+                    LAT: <span class="val" id="gps-lat">8.4287</span> N<br>
+                    LON: <span class="val" id="gps-lon">-82.4321</span> W
                 </div>
             </div>
+
+            <h1 id="chofer-titulo-estado" style="font-family: 'Orbitron'; margin-bottom: 10px; font-size: 1.3rem;">NOTIFICACIÓN GENERAL</h1>
+            <hr style="border: 0; border-top: 1px dashed rgba(255,255,255,0.2); margin: 15px 0;">
+            <p id="chofer-motivo" style="font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; font-weight: 600; padding: 0 5px;"></p>
+            
+            <p id="chofer-plazo-falso" style="font-size: 0.9rem; color: var(--gold); margin-top: 15px; font-weight: bold; display: none;"></p>
 
             <div class="timer-container" id="timer-wrapper">
                 <div class="timer-box" id="timer-display">00:00:00</div>
@@ -208,6 +238,15 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 
             <p style="font-size: 0.75rem; color: #666; margin-top: 25px; font-style: italic;">Panel de Alertas Integrado - Master Mobility OS</p>
         </div>
+
+        <div id="chofer-box-exito" class="form-panel" style="display:none;">
+            <i class="fa-solid fa-circle-check" style="font-size: 4rem; color: var(--success); margin-bottom: 20px;"></i>
+            <h2 style="color:var(--success); font-family:'Orbitron'; margin-bottom:15px;">¡PAGO RECIBIDO EXITOSAMENTE!</h2>
+            <p style="color:#ddd; font-size:1rem; line-height:1.6; margin-bottom:15px;">Gracias por realizar tu pago y mantener tu cuenta al día. Tu vehículo se encuentra <b>liberado</b> y el sistema de inmovilización ha sido desactivado.</p>
+            <p style="color:#aaa; font-size:0.9rem;">Te recomendamos seguir realizando tus pagos a tiempo para evitar futuras alertas y bloqueos del sistema.</p>
+            <p style="font-size: 0.75rem; color: #666; margin-top: 30px; font-style: italic;">Master Mobility OS</p>
+        </div>
+
     </div>
 </div>
 
@@ -234,7 +273,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (choferUrlId) {
         document.getElementById('panel-chofer').style.display = 'block';
         escucharAlertasChofer(choferUrlId);
-        iniciarRastreoFalso();
+        iniciarTelemetriaFalsa();
     } else {
         document.getElementById('panel-login-admin').style.display = 'block';
     }
@@ -252,7 +291,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if(choferUrlId && currentTgConfig.telefono_agente) {
                 const btnAgente = document.getElementById('btn-contact-agent');
                 const cleanNum = currentTgConfig.telefono_agente.replace(/[^0-9]/g, ''); 
-                btnAgente.href = `https://wa.me/${cleanNum}?text=Hola,%20escribo%20desde%20el%20panel%20de%20alertas%20temporizadas.`;
+                btnAgente.href = `https://wa.me/${cleanNum}?text=Hola,%20escribo%20desde%20el%20panel%20de%20alertas.`;
                 btnAgente.style.display = 'block';
             }
         }
@@ -322,7 +361,8 @@ function cargarAlertaExistente() {
     }
     const alerta = appData.alertas[choferId];
     document.getElementById('alerta-motivo').value = alerta.motivo || '';
-    document.getElementById('alerta-color').value = alerta.color || 'orange';
+    if(alerta.color) document.getElementById('alerta-color').value = alerta.color;
+    document.getElementById('alerta-tiempo-falso').value = alerta.tiempoFalso || '';
 }
 
 function renderizarAdminFlota() {
@@ -343,23 +383,23 @@ function renderizarAdminFlota() {
         
         let statusBadge = `<span class="badge bg-off"><i class="fa-solid fa-circle"></i> Sin Alertas</span>`;
         let timerDisplayHtml = '';
+        let btnPagarHtml = '';
         
         if (tieneAlerta) {
-            if (alerta.estado === 'creado') {
-                statusBadge = `<span class="badge bg-creado"><i class="fa-solid fa-link"></i> Link Enviado (En Espera)</span>`;
-                let mins = Math.floor(alerta.duracionMs / 60000);
-                timerDisplayHtml = `<div style="font-family:'Orbitron'; font-size:1.1rem; font-weight:bold; margin-top:10px; color:var(--info);">Esperando que abra... (${mins}m)</div>`;
-            } else if (alerta.estado === 'corriendo') {
+            if (alerta.estado === 'corriendo') {
                 const colorActual = alerta.color === 'red' ? 'var(--red)' : 'var(--orange)';
                 statusBadge = `<span class="badge" style="background:${colorActual}; color:white;"><i class="fa-solid fa-hourglass-start fa-spin"></i> Reloj Corriendo</span>`;
                 timerDisplayHtml = `<div style="font-family:'Orbitron'; font-size:1.4rem; font-weight:bold; margin-top:10px; color:${colorActual}; text-shadow: 0 0 5px rgba(255,255,255,0.2);" id="admin-timer-${c.id}">00:00:00</div>`;
+                btnPagarHtml = `<button class="btn btn-green" style="padding:8px; font-size:0.7rem; margin-top:10px; font-family:'Inter';" onclick="marcarComoPagado('${c.id}')"><i class="fa-solid fa-check"></i> MARCAR COMO PAGADO</button>`;
+            } else if (alerta.estado === 'pagado') {
+                statusBadge = `<span class="badge bg-pagado"><i class="fa-solid fa-check-double"></i> Pagado / Resuelto</span>`;
             }
         }
 
         const linkUnico = `${window.location.origin}${window.location.pathname}?driver=${c.id}`;
 
         contenedor.innerHTML += `
-            <div class="driver-card" style="${tieneAlerta ? 'border-color:' + (alerta.color === 'red' ? 'var(--red)' : 'var(--orange)') + '; box-shadow: 0 0 10px rgba(0,0,0,0.5);' : ''}">
+            <div class="driver-card" style="${tieneAlerta ? 'border-color:' + (alerta.estado === 'pagado' ? 'var(--success)' : (alerta.color === 'red' ? 'var(--red)' : 'var(--orange)')) + '; box-shadow: 0 0 10px rgba(0,0,0,0.5);' : ''}">
                 <div>
                     <h3 style="color: var(--gold); font-size: 1.1rem;">${c.nombre}</h3>
                     <p style="font-size:0.8rem; color:#aaa; margin-top:3px;"><i class="fa-solid fa-car"></i> ${autoText}</p>
@@ -372,7 +412,10 @@ function renderizarAdminFlota() {
                         <span>Link Único</span>
                         <button class="copy-btn" onclick="copiarLink('${linkUnico}')"><i class="fa-regular fa-copy"></i> Copiar</button>
                     </div>
-                    <button class="btn btn-blue" style="padding:8px; font-size:0.7rem; margin-top:10px; font-family:'Inter';" onclick="seleccionarChoferForm('${c.id}')"><i class="fa-solid fa-sliders"></i> Configurar Alerta</button>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-blue" style="padding:8px; font-size:0.7rem; margin-top:10px; font-family:'Inter';" onclick="seleccionarChoferForm('${c.id}')"><i class="fa-solid fa-sliders"></i> Configurar</button>
+                        ${btnPagarHtml}
+                    </div>
                 </div>
             </div>
         `;
@@ -410,11 +453,14 @@ async function activarAlerta(e) {
     const chofer = appData.conductores.find(c => c.id === choferId);
     const motivo = document.getElementById('alerta-motivo').value;
     const color = document.getElementById('alerta-color').value;
+    const tiempoFalso = document.getElementById('alerta-tiempo-falso').value;
     const tiempoVal = parseInt(document.getElementById('alerta-tiempo').value);
     const unidad = document.getElementById('alerta-unidad').value;
 
     let minutos = unidad === 'horas' ? tiempoVal * 60 : tiempoVal;
     const duracionMs = minutos * 60 * 1000;
+    const ahora = Date.now();
+    const expiracion = ahora + duracionMs; // ¡ARRANCA INMEDIATAMENTE!
 
     try {
         let imageUrl = '';
@@ -434,27 +480,40 @@ async function activarAlerta(e) {
             motivo: motivo,
             color: color,
             foto: imageUrl,
+            tiempoFalso: tiempoFalso,
             duracionMs: duracionMs,
-            expiresAt: 0,
-            estado: 'creado',
+            expiresAt: expiracion,
+            estado: 'corriendo', // Ya no espera, corre de una vez
             notifiedTelegram: false,
             activo: true
         });
 
-        alert("¡Enlace creado! El tiempo empezará a correr cuando el conductor abra el link.");
+        alert("¡Alerta activada y reloj corriendo!");
         document.getElementById('alerta-foto').value = '';
     } catch(err) {
         alert("Error al crear alerta: " + err.message);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-bolt"></i> CREAR ENLACE';
+        btn.innerHTML = '<i class="fa-solid fa-bolt"></i> INICIAR TIEMPO AHORA';
+    }
+}
+
+async function marcarComoPagado(choferId) {
+    if(confirm("¿Confirmas que el conductor realizó el pago?\nSu pantalla cambiará automáticamente a un mensaje de agradecimiento.")) {
+        try {
+            await db.collection('alertas_temporizador').doc(choferId).update({
+                estado: 'pagado',
+                color: 'success'
+            });
+            alert("Marcado como pagado exitosamente.");
+        } catch(e) { alert(e.message); }
     }
 }
 
 async function removerAlerta() {
     const choferId = document.getElementById('select-chofer').value;
-    if (!choferId) return alert("Selecciona un conductor para apagar su alerta.");
-    if (!confirm("¿Deseas remover el temporizador de este conductor?")) return;
+    if (!choferId) return alert("Selecciona un conductor para borrar su alerta.");
+    if (!confirm("¿Deseas eliminar completamente la alerta de este conductor?")) return;
 
     try {
         if(appData.alertas[choferId] && appData.alertas[choferId].foto) {
@@ -462,52 +521,61 @@ async function removerAlerta() {
         }
         await db.collection('alertas_temporizador').doc(choferId).delete();
         document.getElementById('form-alerta').reset();
-        alert("Alerta desactivada.");
+        alert("Alerta eliminada de la base de datos.");
     } catch(e) { alert(e.message); }
 }
 
 let alertaChoferLocal = null;
 function escucharAlertasChofer(id) {
     db.collection('alertas_temporizador').doc(id).onSnapshot(async (doc) => {
-        const caja = document.getElementById('chofer-box-alerta');
+        const cajaAlerta = document.getElementById('chofer-box-alerta');
+        const cajaExito = document.getElementById('chofer-box-exito');
         const wrapper = document.getElementById('timer-wrapper');
         const panelGps = document.getElementById('panel-gps');
+        const plazoFalso = document.getElementById('chofer-plazo-falso');
         
         if (!doc.exists || !doc.data().activo) {
             alertaChoferLocal = null;
             clearInterval(timerInterval);
+            cajaExito.style.display = 'none';
+            cajaAlerta.style.display = 'block';
             document.getElementById('chofer-titulo-estado').innerText = "SIN ALERTAS ACTIVAS";
             document.getElementById('chofer-motivo').innerText = "Tu cuenta no registra advertencias pendientes en este momento. Sigue conduciendo de forma responsable.";
             document.getElementById('timer-display').innerText = "00:00:00";
             wrapper.style.color = "var(--success)";
-            caja.style.borderColor = "#222";
+            cajaAlerta.style.borderColor = "#222";
             document.getElementById('container-img-chofer').innerHTML = '';
             panelGps.style.display = 'none';
+            plazoFalso.style.display = 'none';
             return;
         }
 
         const data = doc.data();
         alertaChoferLocal = data;
-        panelGps.style.display = 'block';
-        
-        if (data.estado === 'creado') {
-            const ahora = Date.now();
-            const expira = ahora + data.duracionMs;
-            await db.collection('alertas_temporizador').doc(id).update({
-                estado: 'corriendo',
-                expiresAt: expira
-            });
-            alertaChoferLocal.expiresAt = expira;
-            alertaChoferLocal.estado = 'corriendo';
-            
-            enviarNotificacionTelegram(`👀 *LINK ABIERTO*\nEl conductor *${data.choferNombre}* acaba de abrir el enlace de alerta.\n¡El reloj ya está en marcha y no se detendrá!`);
+
+        if (data.estado === 'pagado') {
+            clearInterval(timerInterval);
+            cajaAlerta.style.display = 'none';
+            cajaExito.style.display = 'block';
+            return;
         }
+
+        cajaExito.style.display = 'none';
+        cajaAlerta.style.display = 'block';
+        panelGps.style.display = 'flex';
         
         document.getElementById('chofer-titulo-estado').innerText = data.color === 'red' ? "⚠️ ALERTA CRÍTICA DE EMPRESA" : "🚨 ADVERTENCIA TEMPORIZADA";
         document.getElementById('chofer-motivo').innerText = data.motivo;
         
+        if(data.tiempoFalso && data.tiempoFalso.trim() !== '') {
+            plazoFalso.innerText = "⏱️ Plazo original otorgado: " + data.tiempoFalso;
+            plazoFalso.style.display = 'block';
+        } else {
+            plazoFalso.style.display = 'none';
+        }
+
         const colorVar = data.color === 'red' ? 'var(--red)' : 'var(--orange)';
-        caja.style.borderColor = colorVar;
+        cajaAlerta.style.borderColor = colorVar;
         document.getElementById('chofer-titulo-estado').style.color = colorVar;
         wrapper.style.color = colorVar;
 
@@ -524,7 +592,7 @@ function escucharAlertasChofer(id) {
 }
 
 function actualizarRelojChofer() {
-    if (!alertaChoferLocal || alertaChoferLocal.estado === 'creado') return;
+    if (!alertaChoferLocal || alertaChoferLocal.estado === 'pagado') return;
     
     const ahora = Date.now();
     const restante = alertaChoferLocal.expiresAt - ahora;
@@ -532,13 +600,19 @@ function actualizarRelojChofer() {
     if (restante <= 0) {
         document.getElementById('timer-display').innerText = "00:00:00";
         evaluarExpiracionServidor(alertaChoferLocal.choferId, alertaChoferLocal);
-        document.getElementById('gps-status-txt').innerText = "VEHÍCULO INMOVILIZADO";
+        document.getElementById('gps-status-txt').innerText = "INMOVILIZADO";
         document.getElementById('gps-status-txt').style.color = "var(--red)";
-        const blip = document.querySelector('.radar-blip');
+        document.getElementById('gps-status-txt').style.borderColor = "var(--red)";
+        document.getElementById('gps-status-txt').style.background = "rgba(255,0,0,0.1)";
+        document.getElementById('gps-vel').innerText = "0 km/h";
+        document.getElementById('gps-obj').innerText = "BLOQUEADO";
+        document.getElementById('gps-obj').style.color = "var(--red)";
+        
+        const blip = document.querySelector('.telemetry-dot');
         if(blip) {
             blip.style.animation = "none";
             blip.style.background = "var(--red)";
-            blip.style.boxShadow = "0 0 15px var(--red)";
+            blip.style.boxShadow = "0 0 10px var(--red)";
         }
         clearInterval(timerInterval);
     } else {
@@ -583,30 +657,24 @@ function copiarLink(txt) {
     }).catch(() => { alert("Enlace: " + txt); });
 }
 
-function iniciarRastreoFalso() {
-    const statuses = ["RASTREANDO SEÑAL...", "CONECTANDO A SATÉLITE 04...", "TRIANGULANDO POSICIÓN...", "SEÑAL ESTABLE - UBICADO"];
-    let statusIndex = 0;
-    
+function iniciarTelemetriaFalsa() {
     setInterval(() => {
         if(alertaChoferLocal && alertaChoferLocal.estado === 'corriendo' && (alertaChoferLocal.expiresAt - Date.now() > 0)) {
             const latFalsa = 8.4200 + (Math.random() * 0.0099);
             const lonFalsa = -82.4300 - (Math.random() * 0.0099);
+            const velFalsa = Math.floor(Math.random() * 45) + 10;
             
             document.getElementById('gps-lat').innerText = latFalsa.toFixed(4);
             document.getElementById('gps-lon').innerText = lonFalsa.toFixed(4);
+            document.getElementById('gps-vel').innerText = velFalsa + " km/h";
             
             const blip = document.getElementById('fake-blip');
             if(blip) {
-                blip.style.top = (40 + (Math.random() * 20)) + '%';
-                blip.style.left = (40 + (Math.random() * 20)) + '%';
-            }
-            
-            if(statusIndex < statuses.length - 1) {
-                statusIndex++;
-                document.getElementById('gps-status-txt').innerText = statuses[statusIndex];
+                blip.style.top = (45 + (Math.random() * 10)) + '%';
+                blip.style.left = (45 + (Math.random() * 10)) + '%';
             }
         }
-    }, 4000); 
+    }, 3500); 
 }
 </script>
 </body>

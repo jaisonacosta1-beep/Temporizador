@@ -49,22 +49,52 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 .bg-off { background: #333; color: #aaa; }
 .bg-creado { background: var(--info); color: black; }
 
-/* TEMPORIZADOR DIGITAL */
-.timer-container { margin: 25px auto; display: inline-block; background: linear-gradient(145deg, #0a0a0a, #151515); padding: 18px 35px; border-radius: 15px; border: 2px solid currentColor; box-shadow: inset 0 0 20px rgba(0,0,0,0.9), 0 8px 25px rgba(0,0,0,0.6); }
-.timer-box { font-family: 'Orbitron', sans-serif; font-size: 3.8rem; font-weight: 900; letter-spacing: 4px; text-shadow: 0 0 20px currentColor; line-height: 1; }
+/* TEMPORIZADOR DIGITAL ADAPTABLE */
+.timer-container { 
+    margin: 15px auto; 
+    display: flex; 
+    justify-content: center;
+    background: linear-gradient(145deg, #0a0a0a, #151515); 
+    padding: 15px 5px; 
+    border-radius: 15px; 
+    border: 2px solid currentColor; 
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.9), 0 8px 25px rgba(0,0,0,0.6); 
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+.timer-box { 
+    font-family: 'Orbitron', sans-serif; 
+    font-size: clamp(2.2rem, 11vw, 3.8rem); /* Se adapta dinámicamente al ancho de la pantalla */
+    font-weight: 900; 
+    letter-spacing: 2px; 
+    text-shadow: 0 0 20px currentColor; 
+    line-height: 1; 
+    white-space: nowrap;
+}
 
-/* EFECTOS RADAR GPS (FALSO) */
-.radar-panel { border: 2px solid var(--radar-green); background: #000; padding: 15px; border-radius: 15px; text-align: left; position: relative; margin-top: 30px; box-shadow: 0 0 15px rgba(0, 255, 65, 0.2); }
-.radar-screen { width: 100%; height: 160px; background: #001a00; border-radius: 10px; position: relative; overflow: hidden; border: 1px solid var(--radar-green); display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+/* EFECTOS RADAR GPS COMPACTO */
+.radar-panel { 
+    border: 2px solid var(--radar-green); 
+    background: #000; 
+    padding: 10px; 
+    border-radius: 12px; 
+    text-align: left; 
+    position: relative; 
+    margin: 15px auto 25px auto; 
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.2); 
+    max-width: 320px; 
+}
+.radar-screen { width: 100%; height: 100px; background: #001a00; border-radius: 8px; position: relative; overflow: hidden; border: 1px solid var(--radar-green); display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
 .radar-grid { position: absolute; width: 100%; height: 100%; background-image: linear-gradient(#003300 1px, transparent 1px), linear-gradient(90deg, #003300 1px, transparent 1px); background-size: 20px 20px; opacity: 0.5; }
-.radar-sweep { position: absolute; width: 200px; height: 200px; border-radius: 50%; border: 2px solid rgba(0, 255, 65, 0.8); border-right-color: transparent; border-bottom-color: transparent; animation: spin 2s linear infinite; box-shadow: 0 0 20px rgba(0, 255, 65, 0.4); }
-.radar-blip { position: absolute; width: 8px; height: 8px; background: var(--radar-green); border-radius: 50%; box-shadow: 0 0 15px var(--radar-green); animation: blink 2s infinite; transition: all 1s ease; }
+.radar-sweep { position: absolute; width: 140px; height: 140px; border-radius: 50%; border: 2px solid rgba(0, 255, 65, 0.8); border-right-color: transparent; border-bottom-color: transparent; animation: spin 2s linear infinite; box-shadow: 0 0 20px rgba(0, 255, 65, 0.4); }
+.radar-blip { position: absolute; width: 6px; height: 6px; background: var(--radar-green); border-radius: 50%; box-shadow: 0 0 15px var(--radar-green); animation: blink 2s infinite; transition: all 1s ease; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 @keyframes blink { 0%, 50% { opacity: 0; } 51%, 100% { opacity: 1; } }
-.gps-data { color: var(--radar-green); font-family: 'Orbitron', monospace; font-size: 0.85rem; line-height: 1.5; }
+.gps-data { color: var(--radar-green); font-family: 'Orbitron', monospace; font-size: 0.75rem; line-height: 1.4; }
 
-.chofer-container { max-width: 600px; margin: 40px auto; padding: 20px; text-align: center; }
-.img-alerta { width: 100%; max-height: 350px; object-fit: contain; border-radius: 12px; margin-top: 20px; border: 1px solid #333; background: #000; }
+.chofer-container { max-width: 600px; margin: 20px auto; padding: 15px; text-align: center; }
+.img-alerta { width: 100%; max-height: 300px; object-fit: contain; border-radius: 12px; margin-top: 15px; border: 1px solid #333; background: #000; }
 
 .link-box { background: #000; padding: 10px; border-radius: 8px; border: 1px solid #333; font-size: 0.8rem; color: var(--info); word-break: break-all; margin-top: 10px; display: flex; align-items: center; justify-content: space-between; }
 .copy-btn { background: none; border: none; color: var(--gold); cursor: pointer; padding-left: 10px; }
@@ -149,19 +179,13 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 
 <div id="panel-chofer" style="display: none;">
     <div class="chofer-container">
-        <div id="chofer-box-alerta" class="form-panel" style="transition: 0.3s; padding: 30px;">
-            <h1 id="chofer-titulo-estado" style="font-family: 'Orbitron'; margin-bottom: 10px;">NOTIFICACIÓN GENERAL</h1>
+        <div id="chofer-box-alerta" class="form-panel" style="transition: 0.3s; padding: 25px 15px;">
+            <h1 id="chofer-titulo-estado" style="font-family: 'Orbitron'; margin-bottom: 10px; font-size: 1.5rem;">NOTIFICACIÓN GENERAL</h1>
             <hr style="border: 0; border-top: 1px dashed rgba(255,255,255,0.2); margin: 15px 0;">
-            <p id="chofer-motivo" style="font-size: 1.1rem; line-height: 1.6; white-space: pre-wrap; font-weight: 600;"></p>
+            <p id="chofer-motivo" style="font-size: 1rem; line-height: 1.5; white-space: pre-wrap; font-weight: 600; padding: 0 10px;"></p>
             
-            <div class="timer-container" id="timer-wrapper">
-                <div class="timer-box" id="timer-display">00:00:00</div>
-            </div>
-            
-            <div id="container-img-chofer"></div>
-
             <div class="radar-panel" id="panel-gps" style="display:none;">
-                <h3 style="color: var(--radar-green); font-family: 'Orbitron'; margin-bottom: 10px; font-size: 1rem;"><i class="fa-solid fa-satellite-dish"></i> SATÉLITE DE RASTREO ACTIVO</h3>
+                <h3 style="color: var(--radar-green); font-family: 'Orbitron'; margin-bottom: 8px; font-size: 0.85rem;"><i class="fa-solid fa-satellite-dish"></i> SATÉLITE DE RASTREO ACTIVO</h3>
                 <div class="radar-screen">
                     <div class="radar-grid"></div>
                     <div class="radar-sweep"></div>
@@ -169,15 +193,20 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
                 </div>
                 <div class="gps-data">
                     <p>ESTADO: <span style="font-weight:bold;" id="gps-status-txt">FIJANDO UBICACIÓN...</span></p>
-                    <p>LAT: <span id="gps-lat">8.4287</span> N</p>
-                    <p>LON: <span id="gps-lon">-82.4321</span> W</p>
-                    <p style="font-size:0.7rem; color:#00aa2b; margin-top:5px;">SISTEMA DE GEOLOCALIZACIÓN VINCULADO</p>
+                    <p>LAT: <span id="gps-lat">8.4287</span> N | LON: <span id="gps-lon">-82.4321</span> W</p>
+                    <p style="font-size:0.65rem; color:#00aa2b; margin-top:3px;">SISTEMA DE GEOLOCALIZACIÓN VINCULADO</p>
                 </div>
             </div>
 
-            <a id="btn-contact-agent" href="#" target="_blank" class="btn btn-whatsapp" style="display: none; text-decoration: none; padding: 18px; font-size: 1.1rem;"><i class="fa-brands fa-whatsapp" style="font-size: 1.3rem;"></i> CONTACTAR A UN AGENTE</a>
+            <div class="timer-container" id="timer-wrapper">
+                <div class="timer-box" id="timer-display">00:00:00</div>
+            </div>
+            
+            <div id="container-img-chofer"></div>
 
-            <p style="font-size: 0.75rem; color: #666; margin-top: 30px; font-style: italic;">Panel de Alertas Integrado - Master Mobility OS</p>
+            <a id="btn-contact-agent" href="#" target="_blank" class="btn btn-whatsapp" style="display: none; text-decoration: none; padding: 15px; font-size: 1rem;"><i class="fa-brands fa-whatsapp" style="font-size: 1.2rem;"></i> CONTACTAR AGENTE</a>
+
+            <p style="font-size: 0.75rem; color: #666; margin-top: 25px; font-style: italic;">Panel de Alertas Integrado - Master Mobility OS</p>
         </div>
     </div>
 </div>
@@ -277,7 +306,6 @@ function conectarBaseDatosAdmin() {
         renderizarAdminFlota();
         cargarAlertaExistente();
         
-        // Si somos admin, mantenemos los relojes actualizados en el panel
         if(!choferUrlId) {
             clearInterval(timerInterval);
             timerInterval = setInterval(actualizarRelojesAdmin, 1000);
@@ -351,7 +379,6 @@ function renderizarAdminFlota() {
     });
 }
 
-// Lógica de actualización solo para la vista del Administrador
 function actualizarRelojesAdmin() {
     const ahora = Date.now();
     appData.conductores.forEach(c => {
@@ -401,7 +428,6 @@ async function activarAlerta(e) {
             imageUrl = appData.alertas[choferId].foto;
         }
 
-        // Creamos la alerta en estado 'creado' (en espera de que el chofer abra el link)
         await db.collection('alertas_temporizador').doc(choferId).set({
             choferId: choferId,
             choferNombre: chofer.nombre,
@@ -464,7 +490,6 @@ function escucharAlertasChofer(id) {
         alertaChoferLocal = data;
         panelGps.style.display = 'block';
         
-        // Si la alerta está recién creada, LA ACTIVAMOS AQUÍ AL ENTRAR EL CHOFER
         if (data.estado === 'creado') {
             const ahora = Date.now();
             const expira = ahora + data.duracionMs;
@@ -475,7 +500,6 @@ function escucharAlertasChofer(id) {
             alertaChoferLocal.expiresAt = expira;
             alertaChoferLocal.estado = 'corriendo';
             
-            // Avisar a admin que el chofer ya abrió el link y empezó a correr
             enviarNotificacionTelegram(`👀 *LINK ABIERTO*\nEl conductor *${data.choferNombre}* acaba de abrir el enlace de alerta.\n¡El reloj ya está en marcha y no se detendrá!`);
         }
         
@@ -493,7 +517,6 @@ function escucharAlertasChofer(id) {
             document.getElementById('container-img-chofer').innerHTML = '';
         }
         
-        // Iniciar el bucle de conteo local para el chofer
         clearInterval(timerInterval);
         timerInterval = setInterval(actualizarRelojChofer, 1000);
         actualizarRelojChofer();
@@ -517,7 +540,7 @@ function actualizarRelojChofer() {
             blip.style.background = "var(--red)";
             blip.style.boxShadow = "0 0 15px var(--red)";
         }
-        clearInterval(timerInterval); // Detener para que no consuma memoria al llegar a cero
+        clearInterval(timerInterval);
     } else {
         document.getElementById('timer-display').innerText = formatearMs(restante);
     }
@@ -560,14 +583,12 @@ function copiarLink(txt) {
     }).catch(() => { alert("Enlace: " + txt); });
 }
 
-// LOGICA DE RASTREO FALSO (COORDENADAS DE DAVID, CHIRIQUÍ)
 function iniciarRastreoFalso() {
     const statuses = ["RASTREANDO SEÑAL...", "CONECTANDO A SATÉLITE 04...", "TRIANGULANDO POSICIÓN...", "SEÑAL ESTABLE - UBICADO"];
     let statusIndex = 0;
     
     setInterval(() => {
         if(alertaChoferLocal && alertaChoferLocal.estado === 'corriendo' && (alertaChoferLocal.expiresAt - Date.now() > 0)) {
-            // Latitud y Longitud base en David
             const latFalsa = 8.4200 + (Math.random() * 0.0099);
             const lonFalsa = -82.4300 - (Math.random() * 0.0099);
             

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Master Mobility OS | Alertas y Cobros</title>
+<title>Master Mobility OS | Módulo Satélite de Alertas</title>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
@@ -51,7 +51,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 .bg-creado { background: var(--info); color: black; }
 .bg-pagado { background: var(--success); color: black; }
 
-/* TEMPORIZADOR ELÁSTICO CORREGIDO PARA QUE NO SE SALGA DE LA PANTALLA */
+/* TEMPORIZADOR ELÁSTICO CORREGIDO */
 .timer-container { 
     margin: 15px auto; 
     background: linear-gradient(145deg, #0a0a0a, #151515); 
@@ -63,12 +63,11 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden; /* Evita desbordamiento */
+    overflow: hidden; 
 }
 .timer-box { 
     font-family: 'Orbitron', sans-serif; 
-    /* La función clamp asegura un tamaño mínimo de 2rem y máximo de 4rem, ajustándose al ancho */
-    font-size: clamp(2rem, 11vw, 4rem); 
+    font-size: clamp(2rem, 13vw, 4rem); 
     font-weight: 900; 
     letter-spacing: 2px; 
     text-shadow: 0 0 15px currentColor; 
@@ -174,7 +173,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
                     <input type="file" id="alerta-foto" accept="image/*">
                 </div>
                 <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="btn btn-gold" id="btn-submit-alerta"><i class="fa-solid fa-bolt"></i> CREAR ENLACE</button>
+                    <button type="submit" class="btn btn-gold" id="btn-submit-alerta"><i class="fa-solid fa-bolt"></i> INICIAR TIEMPO AHORA</button>
                     <button type="button" class="btn btn-red" style="width: auto;" onclick="removerAlerta()" title="Apagar / Borrar Alerta"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </form>
@@ -257,7 +256,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 </div>
 
 <script>
-// Asegúrate de colocar tu configuración real de Firebase
+// Recuerda poner las credenciales correctas de Firebase aquí
 const firebaseConfig = {
     apiKey: "AIzaSyB2tSowCQwfncdpjQOYEYOEKLrDaeeap48",
     authDomain: "personal-car-19faa.firebaseapp.com",
@@ -373,6 +372,13 @@ function cargarAlertaExistente() {
     document.getElementById('alerta-tiempo-falso').value = alerta.tiempoFalso || '';
 }
 
+// FUNCIÓN RESTAURADA: Seleccionar Chofer para Configurar
+function seleccionarChoferForm(id) {
+    document.getElementById('select-chofer').value = id;
+    cargarAlertaExistente();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function renderizarAdminFlota() {
     const contenedor = document.getElementById('lista-choferes');
     if (!contenedor) return;
@@ -394,11 +400,7 @@ function renderizarAdminFlota() {
         let btnPagarHtml = '';
         
         if (tieneAlerta) {
-            if (alerta.estado === 'creado') {
-                statusBadge = `<span class="badge bg-creado"><i class="fa-solid fa-link"></i> Link Enviado (En Espera)</span>`;
-                let mins = Math.floor(alerta.duracionMs / 60000);
-                timerDisplayHtml = `<div style="font-family:'Orbitron'; font-size:1.1rem; font-weight:bold; margin-top:10px; color:var(--info);">Esperando que abra... (${mins}m)</div>`;
-            } else if (alerta.estado === 'corriendo') {
+            if (alerta.estado === 'corriendo') {
                 const colorActual = alerta.color === 'red' ? 'var(--red)' : 'var(--orange)';
                 statusBadge = `<span class="badge" style="background:${colorActual}; color:white;"><i class="fa-solid fa-hourglass-start fa-spin"></i> Reloj Corriendo</span>`;
                 timerDisplayHtml = `<div style="font-family:'Orbitron'; font-size:1.4rem; font-weight:bold; margin-top:10px; color:${colorActual}; text-shadow: 0 0 5px rgba(255,255,255,0.2);" id="admin-timer-${c.id}">00:00:00</div>`;
@@ -495,18 +497,19 @@ async function activarAlerta(e) {
             tiempoFalso: tiempoFalso,
             duracionMs: duracionMs,
             expiresAt: expiracion,
-            estado: 'creado', 
+            estado: 'corriendo', 
             notifiedTelegram: false,
+            linkAbiertoNotificado: false,
             activo: true
         });
 
-        alert("¡Alerta activada y lista para enviar!");
+        alert("¡Alerta activada y reloj corriendo desde este segundo!");
         document.getElementById('alerta-foto').value = '';
     } catch(err) {
         alert("Error al crear alerta: " + err.message);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-bolt"></i> CREAR ENLACE';
+        btn.innerHTML = '<i class="fa-solid fa-bolt"></i> INICIAR TIEMPO AHORA';
     }
 }
 
@@ -540,7 +543,7 @@ async function removerAlerta() {
 let alertaChoferLocal = null;
 function escucharAlertasChofer(id) {
     
-    // ESCUCHA FINANZAS (DEUDA Y ARREGLO)
+    // 1. ESCUCHA DE FINANZAS (DEUDA Y ARREGLO)
     db.collection('conductores').doc(id).onSnapshot(docCond => {
         if(!docCond.exists) return;
         const c = docCond.data();
@@ -588,7 +591,7 @@ function escucharAlertasChofer(id) {
         }
     });
 
-    // ESCUCHA TEMPORIZADOR Y GPS
+    // 2. ESCUCHA DE ALERTA, GPS Y TEMPORIZADOR
     db.collection('alertas_temporizador').doc(id).onSnapshot(async (doc) => {
         const cajaAlerta = document.getElementById('chofer-box-alerta');
         const cajaExito = document.getElementById('chofer-box-exito');
@@ -619,7 +622,7 @@ function escucharAlertasChofer(id) {
         if (data.estado === 'pagado') {
             clearInterval(timerInterval);
             cajaAlerta.style.display = 'none';
-            cajaFinanzas.style.display = 'none'; // Ocultar finanzas si ya pagó y todo está bien
+            cajaFinanzas.style.display = 'none'; // Se ocultan finanzas si ya pagó
             cajaExito.style.display = 'block';
             return;
         }
@@ -629,17 +632,10 @@ function escucharAlertasChofer(id) {
         cajaFinanzas.style.display = 'block';
         panelGps.style.display = 'flex';
         
-        if (data.estado === 'creado') {
-            const ahora = Date.now();
-            const expira = ahora + data.duracionMs;
-            await db.collection('alertas_temporizador').doc(id).update({
-                estado: 'corriendo',
-                expiresAt: expira
-            });
-            alertaChoferLocal.expiresAt = expira;
-            alertaChoferLocal.estado = 'corriendo';
-            
-            enviarNotificacionTelegram(`👀 *LINK ABIERTO*\nEl conductor *${data.choferNombre}* acaba de abrir el enlace de alerta.\n¡El reloj ya está en marcha y no se detendrá!`);
+        // AVISAR A TELEGRAM CUANDO ABRE EL LINK POR PRIMERA VEZ
+        if (!data.linkAbiertoNotificado) {
+            db.collection('alertas_temporizador').doc(id).update({ linkAbiertoNotificado: true });
+            enviarNotificacionTelegram(`👀 *LINK ABIERTO*\nEl conductor *${data.choferNombre}* acaba de abrir el enlace de alerta.\n¡Recuerda que el reloj ya estaba corriendo!`);
         }
         
         document.getElementById('chofer-titulo-estado').innerText = data.color === 'red' ? "⚠️ ALERTA CRÍTICA DE EMPRESA" : "🚨 ADVERTENCIA TEMPORIZADA";

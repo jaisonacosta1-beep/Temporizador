@@ -3,24 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Master Mobility OS | Módulo Satélite de Alertas</title>
+<title>Master Mobility OS | Módulo Satélite de Alertas y Pagos</title>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
-:root {
-    --gold: #e6b800;
-    --red: #d32f2f;
-    --orange: #ff6b00;
-    --dark: #050505;
-    --card: #111;
-    --success: #00ff88;
-    --blue: #3b82f6;
-    --info: #0dcaf0;
-    --radar-green: #00ff41;
-}
+:root { --gold: #e6b800; --red: #d32f2f; --orange: #ff6b00; --dark: #050505; --card: #111; --success: #00ff88; --blue: #3b82f6; --info: #0dcaf0; }
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
 body { background: var(--dark); color: white; overflow-x: hidden; padding-bottom: 50px; }
 
@@ -31,232 +22,296 @@ header { background: rgba(0,0,0,0.95); padding: 15px 25px; border-bottom: 2px so
 .input-group { margin-bottom: 15px; }
 .input-group label { display: block; font-size: 0.8rem; color: var(--gold); margin-bottom: 8px; font-family: 'Orbitron'; font-weight: bold; text-transform: uppercase; }
 input, select, textarea { width: 100%; padding: 12px; background: #000; color: white; border: 1px solid #333; border-radius: 10px; font-size: 15px; }
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
 input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: none; }
 
-.btn { padding: 14px; border: none; border-radius: 10px; font-family: 'Orbitron'; font-weight: 900; width: 100%; cursor: pointer; transition: 0.3s; text-transform: uppercase; }
+.btn { padding: 12px; border: none; border-radius: 10px; font-family: 'Orbitron'; font-weight: 900; width: 100%; cursor: pointer; transition: 0.3s; text-transform: uppercase; }
 .btn-gold { background: var(--gold); color: black; }
 .btn-blue { background: var(--blue); color: white; }
 .btn-red { background: var(--red); color: white; }
 .btn-green { background: var(--success); color: black; }
-.btn-whatsapp { background: #25D366; color: white; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; }
-.btn-whatsapp:hover { background: #128C7E; }
+.btn-orange { background: var(--orange); color: white; }
+.btn-small { padding: 8px 12px; font-size: 0.75rem; }
 
-.grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-.driver-card { background: var(--card); border-radius: 15px; padding: 20px; border: 1px solid #222; display: flex; flex-direction: column; justify-content: space-between; }
-.driver-card.active-timer { border-color: var(--orange); box-shadow: 0 0 10px rgba(255,107,0,0.2); }
+.grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+@media (max-width: 500px) { .grid-layout { grid-template-columns: 1fr; } }
 
-.badge { padding: 5px 10px; border-radius: 5px; font-size: 0.7rem; font-weight: bold; font-family: 'Orbitron'; display: inline-block; margin-top: 5px; }
+.driver-card { background: var(--card); border-radius: 15px; padding: 15px; border: 1px solid #222; cursor: pointer; transition: 0.2s; position: relative; }
+.driver-card:hover { border-color: var(--gold); }
+.badge { padding: 4px 8px; border-radius: 5px; font-size: 0.65rem; font-weight: bold; font-family: 'Orbitron'; display: inline-block; margin-top: 5px; position: absolute; top: 10px; right: 10px; }
 .bg-run { background: var(--orange); color: white; }
-.bg-off { background: #333; color: #aaa; }
-.bg-creado { background: var(--info); color: black; }
-.bg-pagado { background: var(--success); color: black; }
 
-/* TEMPORIZADOR ELÁSTICO CORREGIDO */
-.timer-container { 
-    margin: 15px auto; 
-    background: linear-gradient(145deg, #0a0a0a, #151515); 
-    padding: 15px 5px; 
-    border-radius: 15px; 
-    border: 2px solid currentColor; 
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.9), 0 8px 25px rgba(0,0,0,0.6); 
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden; 
-}
-.timer-box { 
-    font-family: 'Orbitron', sans-serif; 
-    font-size: clamp(2rem, 13vw, 4rem); 
-    font-weight: 900; 
-    letter-spacing: 2px; 
-    text-shadow: 0 0 15px currentColor; 
-    line-height: 1; 
-    white-space: nowrap;
-    text-align: center;
-    width: 100%;
-}
+.history-table { width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; }
+.history-table th { font-family: 'Orbitron'; font-size: 0.75rem; color: var(--blue); padding: 10px; border-bottom: 2px solid #222; text-transform: uppercase; }
+.history-table td { padding: 10px; border-bottom: 1px solid #222; font-size: 0.85rem; color: #ddd; vertical-align: middle; }
 
-/* PLAZO ORIGINAL DISEÑO PROFESIONAL */
-.plazo-box { background: rgba(230, 184, 0, 0.1); border: 1px solid var(--gold); padding: 12px 15px; border-radius: 10px; display: inline-block; margin: 15px auto; font-family: 'Orbitron', sans-serif; font-size: 0.8rem; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 0 15px rgba(230, 184, 0, 0.2); }
-.plazo-box span { color: white; font-weight: 900; font-size: 1rem; margin-left: 5px; }
+/* DASHBOARD ATRASOS */
+.dashboard-box { background: rgba(211,47,47,0.1); border: 1px solid var(--red); padding: 15px; border-radius: 15px; margin-bottom: 20px; }
+.atraso-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #333; font-size: 0.9rem; }
+.atraso-item:last-child { border-bottom: none; }
 
-/* GPS REALISTA (TELEMETRÍA) */
-.telemetry-panel { background: #050505; border: 1px solid #222; border-radius: 10px; padding: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); }
-.telemetry-map { width: 75px; height: 75px; border-radius: 8px; background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Satellite_view_of_Panama.jpg/320px-Satellite_view_of_Panama.jpg') center/cover; position: relative; border: 1px solid var(--radar-green); overflow: hidden; flex-shrink: 0; }
-.telemetry-map::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 255, 65, 0.1); background-image: linear-gradient(rgba(0,255,65,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,65,0.2) 1px, transparent 1px); background-size: 10px 10px; }
-.telemetry-dot { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: var(--radar-green); border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px var(--radar-green), 0 0 5px var(--radar-green); animation: pulse 1.5s infinite; z-index: 2; }
-@keyframes pulse { 0% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; } }
-.telemetry-data { text-align: left; font-family: 'Orbitron', monospace; font-size: 0.65rem; color: #aaa; flex: 1; line-height: 1.5; }
-.telemetry-data span.val { color: var(--radar-green); font-weight: bold; }
-.telemetry-status { background: rgba(0, 255, 65, 0.1); color: var(--radar-green); padding: 4px 8px; border-radius: 3px; display: inline-block; margin-bottom: 5px; border: 1px solid var(--radar-green); font-size: 0.65rem; font-weight: bold; letter-spacing: 1px; }
-
+.timer-container { margin: 15px auto; background: linear-gradient(145deg, #0a0a0a, #151515); padding: 15px 5px; border-radius: 15px; border: 2px solid currentColor; box-shadow: inset 0 0 20px rgba(0,0,0,0.9); text-align: center; }
+.timer-box { font-family: 'Orbitron', sans-serif; font-size: clamp(2rem, 13vw, 4rem); font-weight: 900; letter-spacing: 2px; text-shadow: 0 0 15px currentColor; line-height: 1; }
 .chofer-container { max-width: 600px; margin: 20px auto; padding: 15px; text-align: center; }
-.img-alerta { width: 100%; max-height: 300px; object-fit: contain; border-radius: 12px; margin-top: 15px; border: 1px solid #333; background: #000; }
-.link-box { background: #000; padding: 10px; border-radius: 8px; border: 1px solid #333; font-size: 0.8rem; color: var(--info); word-break: break-all; margin-top: 10px; display: flex; align-items: center; justify-content: space-between; }
-.copy-btn { background: none; border: none; color: var(--gold); cursor: pointer; padding-left: 10px; font-weight: bold; }
-.login-box { max-width: 400px; margin: 10vh auto 0 auto; background: var(--card); padding: 40px; border-radius: 20px; border: 1px solid #333; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
 
-#chofer-box-exito { padding: 40px 20px; background: rgba(0, 255, 136, 0.05); border: 2px solid var(--success); }
+/* Botones de fecha rápida */
+.quick-date-container { display: flex; gap: 8px; margin-bottom: 10px; }
+.quick-date-btn { flex: 1; padding: 8px 5px; font-size: 0.7rem; border-radius: 5px; border: none; font-family: 'Orbitron'; font-weight: bold; cursor: pointer; text-transform: uppercase; }
 </style>
 </head>
 <body>
 
-<div id="panel-login-admin" style="display: none;">
-    <div class="login-box">
-        <h2 style="font-family:'Orbitron'; color:var(--red); margin-bottom:15px;"><i class="fa-solid fa-lock"></i> CONTROL SEGURO</h2>
-        <p style="color:#aaa; font-size:0.9rem; margin-bottom:25px;">Introduce la clave maestra para gestionar los temporizadores.</p>
-        <form onsubmit="verificarPasswordAdmin(event)">
-            <input type="password" id="pass-modulo" placeholder="Contraseña Maestra" style="text-align:center; letter-spacing:5px; margin-bottom:20px;" required>
-            <button type="submit" class="btn btn-red">ENTRAR AL MÓDULO</button>
-        </form>
+<div id="modal-pass-chofer" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="form-panel" style="width: 90%; max-width: 350px; text-align: center; border: 2px solid var(--red); margin-bottom: 0;">
+        <h3 style="font-family: 'Orbitron'; color: var(--gold); margin-bottom: 15px;"><i class="fa-solid fa-lock"></i> SEGURIDAD</h3>
+        <p style="font-size: 0.85rem; color: #aaa; margin-bottom: 15px;">Ingrese la clave para acceder a este conductor.</p>
+        <input type="password" id="input-modal-pass" style="text-align: center; letter-spacing: 5px; margin-bottom: 20px;" placeholder="****">
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-red" onclick="cerrarModalPass()">CANCELAR</button>
+            <button class="btn btn-green" onclick="validarModalPass()">ENTRAR</button>
+        </div>
     </div>
 </div>
 
 <div id="panel-admin" style="display: none;">
     <header>
-        <div style="font-family:'Orbitron'; color:var(--gold); font-size:1.2rem;"><i class="fa-solid fa-clock"></i> PANEL DE TEMPORIZADORES</div>
-        <div style="color: var(--success); font-size: 0.8rem; font-family: 'Orbitron';">SISTEMA SATÉLITE ACTIVO</div>
+        <div style="font-family:'Orbitron'; color:var(--gold); font-size:1.2rem;">MASTER MOBILITY</div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="btn btn-gold" style="width:auto; padding:5px 15px; font-size:0.8rem;" onclick="toggleFormConductor()"><i class="fa-solid fa-plus"></i> CHOFER</button>
+            <button id="btn-seguridad" class="btn btn-green" style="width:auto; padding:5px 15px; font-size:0.8rem;" onclick="toggleSeguridad()"><i class="fa-solid fa-unlock"></i> CLAVE OFF</button>
+        </div>
     </header>
     
     <div class="container">
-        <div class="form-panel" style="border-top: 3px solid #25D366; padding: 20px;">
-            <h2 style="font-family:'Orbitron'; color:#25D366; margin-bottom:10px; font-size:1rem;"><i class="fa-brands fa-whatsapp"></i> CONFIGURACIÓN DE AGENTE</h2>
-            <p style="color:#aaa; font-size:0.8rem; margin-bottom:15px;">Establece el número de teléfono al que los conductores serán redirigidos cuando necesiten contactarte desde el panel de alerta.</p>
-            <form style="display:flex; gap:10px; flex-wrap:wrap;" onsubmit="guardarNumeroAgente(event)">
-                <input type="text" id="admin-num-agente" placeholder="Ej: 50761234567" required style="flex: 1; min-width: 200px;">
-                <button type="submit" class="btn btn-green" style="width: auto; padding: 12px 20px; background: #25D366; color: black;"><i class="fa-solid fa-save"></i> GUARDAR NÚMERO</button>
-            </form>
+        
+        <div id="dashboard-atrasados" class="dashboard-box" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="font-family:'Orbitron'; color:var(--red); font-size: 1rem;"><i class="fa-solid fa-triangle-exclamation"></i> DEUDAS ATRASADAS</h3>
+                <h3 id="total-deuda-calle" style="font-family:'Orbitron'; color:var(--gold); font-size: 1.2rem;">$0.00</h3>
+            </div>
+            <div id="lista-atrasados"></div>
+        </div>
+        
+        <div class="form-panel">
+            <h2 style="font-family:'Orbitron'; color:var(--info); margin-bottom:15px; font-size:1.1rem;"><i class="fa-solid fa-search"></i> LISTADO GENERAL</h2>
+            <input type="text" id="buscador-input" placeholder="Buscar por nombre o placa..." onkeyup="filtrarListaConductores()">
+            <div id="lista-busqueda-resultados" class="grid-layout" style="margin-top: 15px; max-height: 500px; overflow-y: auto;"></div>
         </div>
 
-        <div class="form-panel">
-            <h2 style="font-family:'Orbitron'; color:var(--gold); margin-bottom:15px; font-size:1.1rem;">NUEVA ALERTA TEMPORIZADA</h2>
-            <form id="form-alerta" onsubmit="activarAlerta(event)">
+    </div>
+</div>
+
+<div id="modal-agregar-conductor" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; overflow-y: auto; align-items: flex-start; justify-content: center; padding: 20px 10px;">
+    <div id="seccion-agregar-conductor" class="form-panel" style="width: 100%; max-width: 700px; border: 1px solid var(--success); margin: auto;">
+        <h2 id="titulo-form-chofer" style="font-family:'Orbitron'; color:var(--success); margin-bottom:15px; font-size:1.1rem;"><i class="fa-solid fa-user-plus"></i> AGREGAR CONDUCTOR</h2>
+        <form onsubmit="guardarConductor(event)">
+            <input type="hidden" id="edit-chofer-id">
+            <div class="grid-layout" style="margin-bottom:15px;">
                 <div class="input-group">
-                    <label>Seleccionar Conductor</label>
-                    <select id="select-chofer" required onchange="cargarAlertaExistente()"></select>
+                    <label>Nombre Completo</label>
+                    <input type="text" id="add-nombre" required>
                 </div>
-                
-                <div class="grid-layout" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 0;">
-                    <div class="input-group">
-                        <label>Tiempo Falso (Lo que leerá el chofer)</label>
-                        <input type="text" id="alerta-tiempo-falso" placeholder="Ej: 24 Horas (Opcional)">
+                <div class="input-group">
+                    <label>Teléfono (WhatsApp, ej: 50760000000)</label>
+                    <input type="text" id="add-telefono" placeholder="50760000000" required>
+                </div>
+            </div>
+            <div class="grid-layout" style="margin-bottom:15px;">
+                <div class="input-group">
+                    <label>Placa del Vehículo</label>
+                    <input type="text" id="add-placa" required>
+                </div>
+                <div class="input-group">
+                    <label>Saldo Pendiente Actual ($)</label>
+                    <input type="number" id="add-saldo" step="0.01" value="0">
+                </div>
+            </div>
+            <div class="grid-layout" style="margin-bottom:15px;">
+                <div class="input-group">
+                    <label>Cuota Fija Predefinida ($)</label>
+                    <input type="number" id="add-cuota" step="0.01" value="25.00">
+                </div>
+                <div class="input-group">
+                    <label>Días Libres (No se cobra)</label>
+                    <div id="dias-libres-container" style="display:flex; gap:5px; flex-wrap:wrap; margin-top:5px;">
+                        <label style="margin-right:5px; cursor:pointer;"><input type="checkbox" value="1" class="check-dia"> Lun</label>
+                        <label style="margin-right:5px; cursor:pointer;"><input type="checkbox" value="2" class="check-dia"> Mar</label>
+                        <label style="margin-right:5px; cursor:pointer;"><input type="checkbox" value="3" class="check-dia"> Mié</label>
+                        <label style="margin-right:5px; cursor:pointer;"><input type="checkbox" value="4" class="check-dia"> Jue</label>
+                        <label style="margin-right:5px; cursor:pointer;"><input type="checkbox" value="5" class="check-dia"> Vie</label>
+                        <label style="margin-right:5px; cursor:pointer;"><input type="checkbox" value="6" class="check-dia"> Sáb</label>
+                        <label style="margin-right:5px; cursor:pointer;"><input type="checkbox" value="0" class="check-dia"> Dom</label>
                     </div>
-                    <div style="display: flex; gap: 15px;">
-                        <div class="input-group" style="flex:1;">
-                            <label>Tiempo REAL Restante</label>
-                            <input type="number" id="alerta-tiempo" placeholder="Ej: 30" required min="1">
+                </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button type="submit" class="btn btn-green" style="padding:10px;">GUARDAR DATOS</button>
+                <button type="button" class="btn btn-red" style="width:auto; padding:10px;" onclick="toggleFormConductor()">CANCELAR</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="modal-gestion-individual" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; overflow-y: auto; align-items: flex-start; justify-content: center; padding: 20px 10px;">
+    <div id="panel-gestion-individual" class="form-panel" style="width: 100%; max-width: 900px; border: 2px solid var(--blue); margin: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px;">
+            <div>
+                <h2 id="gestion-nombre" style="font-family:'Orbitron'; color:var(--gold); margin-bottom: 5px; font-size: 1.2rem;">Nombre</h2>
+                <p id="gestion-placa" style="color:#aaa; font-size:0.9rem;"><i class="fa-solid fa-car"></i> Placa: --- | <span id="gestion-cuota-fija" style="color:var(--info);">Cuota: $25</span></p>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-gold" style="width: auto; padding: 8px 15px;" onclick="abrirEdicionConductor()"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn btn-red" style="width: auto; padding: 8px 15px;" onclick="cerrarGestionIndividual()"><i class="fa-solid fa-times"></i></button>
+            </div>
+        </div>
+
+        <input type="hidden" id="gestion-chofer-id">
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+            <div style="background: #050505; padding: 15px; border-radius: 10px; border: 1px solid #222;">
+                <div id="desglose-deuda-panel" style="margin-bottom: 15px; background: #111; padding: 15px; border-radius: 8px; border-left: 4px solid var(--gold);">
+                    </div>
+
+                <form onsubmit="registrarPagoHistorial(event)" style="border-top: 1px dashed #333; padding-top: 15px;">
+                    <h4 style="font-size: 0.85rem; color: var(--gold); margin-bottom: 10px;">REGISTRAR PAGO O ADELANTO</h4>
+                    
+                    <div class="input-group">
+                        <label>Día correspondiente al pago</label>
+                        <div class="quick-date-container">
+                            <button type="button" class="quick-date-btn" style="background:#555; color:white;" onclick="setearFechaRapida(-1)">Ayer</button>
+                            <button type="button" class="quick-date-btn" style="background:var(--blue); color:white;" onclick="setearFechaRapida(0)">Hoy</button>
+                            <button type="button" class="quick-date-btn" style="background:var(--success); color:black;" onclick="setearFechaRapida(1)">Adelanto</button>
                         </div>
-                        <div class="input-group" style="flex:1;">
-                            <label>Unidad (Real)</label>
-                            <select id="alerta-unidad">
-                                <option value="minutos">Minutos</option>
-                                <option value="horas">Horas</option>
+                        <input type="date" id="nuevo-pago-fecha" required>
+                    </div>
+                    
+                    <div class="grid-layout">
+                        <div class="input-group">
+                            <label>Método de Pago</label>
+                            <select id="nuevo-pago-metodo" required>
+                                <option value="Yappy">Yappy</option>
+                                <option value="Banco General">Banco General</option>
+                                <option value="Banistmo">Banistmo</option>
+                                <option value="Efectivo">Efectivo</option>
                             </select>
                         </div>
+                        <div class="input-group">
+                            <label>Monto ($)</label>
+                            <input type="number" id="nuevo-pago-monto" step="0.01" required>
+                        </div>
                     </div>
-                </div>
 
-                <div class="input-group">
-                    <label>Color del Panel Visual</label>
-                    <select id="alerta-color">
-                        <option value="orange">Naranja (Advertencia Moderada)</option>
-                        <option value="red">Rojo (Bloqueo / Alerta Crítica)</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>Motivo o Detalles de la Alerta</label>
-                    <textarea id="alerta-motivo" rows="3" placeholder="Escribe la razón del temporizador..." required></textarea>
-                </div>
-                <div class="input-group">
-                    <label>Imagen Adjunta de Respaldo (Opcional)</label>
-                    <input type="file" id="alerta-foto" accept="image/*">
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="btn btn-gold" id="btn-submit-alerta"><i class="fa-solid fa-bolt"></i> INICIAR TIEMPO AHORA</button>
-                    <button type="button" class="btn btn-red" style="width: auto;" onclick="removerAlerta()" title="Apagar / Borrar Alerta"><i class="fa-solid fa-trash"></i></button>
-                </div>
-            </form>
+                    <div class="input-group">
+                        <input type="text" id="nuevo-pago-desc" placeholder="Detalle (Opcional)" value="Pago Regular">
+                    </div>
+                    <button type="submit" class="btn btn-green" style="padding: 10px;"><i class="fa-solid fa-save"></i> GUARDAR TRANSACCIÓN</button>
+                </form>
+            </div>
+
+            <div style="background: #050505; padding: 15px; border-radius: 10px; border: 1px solid #222; overflow-y: auto; max-height: 480px;">
+                <h3 style="font-size: 1rem; color: var(--blue); margin-bottom: 10px;">HISTORIAL DE MOVIMIENTOS</h3>
+                <table class="history-table">
+                    <thead><tr><th>Fecha</th><th>Detalle</th><th>Monto</th><th style="text-align:right;">Acciones</th></tr></thead>
+                    <tbody id="tabla-historial-admin"><tr><td colspan="4" style="text-align: center;">Cargando...</td></tr></tbody>
+                </table>
+            </div>
         </div>
 
-        <h2 style="font-family:'Orbitron'; color:white; margin-bottom:15px; font-size:1.2rem;">ESTADO ACTUAL DE LA FLOTA</h2>
-        <div id="lista-choferes" class="grid-layout"></div>
+        <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-orange" style="width: auto; flex: 1; padding: 10px;" onclick="prepararAlertaManual()"><i class="fa-solid fa-bolt"></i> CRONÓMETRO MANUAL</button>
+            <button class="btn btn-blue" style="width: auto; flex: 1; padding: 10px;" onclick="copiarLinkConductor()"><i class="fa-solid fa-link"></i> COPIAR LINK CHOFER</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-form-alerta" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1001; overflow-y: auto; align-items: flex-start; justify-content: center; padding: 20px 10px;">
+    <div id="seccion-form-alerta" class="form-panel" style="width: 100%; max-width: 500px; border: 2px solid var(--orange); margin: auto;">
+        <h2 style="font-family:'Orbitron'; color:var(--orange); margin-bottom:15px; font-size:1.1rem;">CRONÓMETRO MANUAL: <span id="nombre-alerta-manual"></span></h2>
+        <form id="form-alerta" onsubmit="activarAlerta(event)">
+            <input type="hidden" id="select-chofer">
+            <div class="input-group">
+                <label>Tiempo Falso en Pantalla</label>
+                <input type="text" id="alerta-tiempo-falso" placeholder="Ej: 12 Horas Restantes">
+            </div>
+            <div style="display: flex; gap: 15px;">
+                <div class="input-group" style="flex:1;">
+                    <label>Tiempo REAL</label>
+                    <input type="number" id="alerta-tiempo" placeholder="Ej: 45" required min="1">
+                </div>
+                <div class="input-group" style="flex:1;">
+                    <label>Unidad</label>
+                    <select id="alerta-unidad">
+                        <option value="minutos">Minutos</option>
+                        <option value="horas">Horas</option>
+                    </select>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Nivel Crítico</label>
+                <select id="alerta-color">
+                    <option value="orange">Naranja (Advertencia)</option>
+                    <option value="red">Rojo (Bloqueo Total)</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Motivo en Pantalla</label>
+                <textarea id="alerta-motivo" rows="2" placeholder="Motivo exacto de la alerta..." required></textarea>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-gold" id="btn-submit-alerta"><i class="fa-solid fa-clock"></i> INICIAR</button>
+                <button type="button" class="btn btn-red" style="width: auto;" onclick="removerAlerta()"><i class="fa-solid fa-trash"></i> APAGAR</button>
+                <button type="button" class="btn btn-blue" style="width: auto;" onclick="cerrarAlertaManual()">CERRAR</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <div id="panel-chofer" style="display: none;">
     <div class="chofer-container">
-        
-        <div id="chofer-box-alerta" class="form-panel" style="transition: 0.3s; padding: 20px 15px;">
-            
-            <div class="telemetry-panel" id="panel-gps" style="display:none;">
-                <div class="telemetry-map">
-                    <div style="position:absolute; top:50%; left:50%; width:100%; height:1px; background:rgba(0,255,65,0.3); transform:translate(-50%, -50%);"></div>
-                    <div style="position:absolute; top:50%; left:50%; width:1px; height:100%; background:rgba(0,255,65,0.3); transform:translate(-50%, -50%);"></div>
-                    <div class="telemetry-dot" id="fake-blip"></div>
-                </div>
-                <div class="telemetry-data">
-                    <div class="telemetry-status" id="gps-status-txt">RASTREANDO...</div><br>
-                    ZONA: <span class="val">DAVID, CHIRIQUÍ</span><br>
-                    LAT: <span class="val" id="gps-lat">8.4287</span> N<br>
-                    LON: <span class="val" id="gps-lon">-82.4321</span> W
-                </div>
-            </div>
-
-            <h1 id="chofer-titulo-estado" style="font-family: 'Orbitron'; margin-bottom: 10px; font-size: 1.3rem;">NOTIFICACIÓN GENERAL</h1>
-            <hr style="border: 0; border-top: 1px dashed rgba(255,255,255,0.2); margin: 15px 0;">
+        <div id="chofer-box-alerta" class="form-panel" style="padding: 20px 15px;">
+            <h1 id="chofer-titulo-estado" style="font-family: 'Orbitron'; margin-bottom: 10px; font-size: 1.3rem;">ESTADO GENERAL</h1>
             <p id="chofer-motivo" style="font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; font-weight: 600; padding: 0 5px;"></p>
-            
-            <div class="plazo-box" id="chofer-plazo-falso" style="display: none;">
-                <i class="fa-solid fa-stopwatch"></i> Plazo inicial otorgado: <span id="txt-plazo"></span>
-            </div>
-
-            <div class="timer-container" id="timer-wrapper">
-                <div class="timer-box" id="timer-display">00:00:00</div>
-            </div>
-            
-            <div id="container-img-chofer"></div>
-
-            <a id="btn-contact-agent" href="#" target="_blank" class="btn btn-whatsapp" style="display: none; text-decoration: none; padding: 15px; font-size: 1rem;"><i class="fa-brands fa-whatsapp" style="font-size: 1.2rem;"></i> CONTACTAR AGENTE</a>
+            <div class="timer-container" id="timer-wrapper"><div class="timer-box" id="timer-display">00:00:00</div></div>
         </div>
-
-        <div id="chofer-box-finanzas" class="form-panel" style="padding: 20px 15px; margin-top: 15px; display: none;">
-            <h2 style="font-family:'Orbitron'; font-size:1.1rem; color:var(--gold); margin-bottom:15px;"><i class="fa-solid fa-wallet"></i> ESTADO DE CUENTA ACTUAL</h2>
-            
-            <div id="finanzas-deuda-container" style="background:#050505; padding:15px; border-radius:10px; border:1px solid #333; margin-bottom:15px;">
-                <p style="font-size:0.8rem; color:#aaa; font-family:'Orbitron';">DEUDA REGULAR (DÍAS)</p>
-                <h1 id="finanzas-deuda-monto" style="font-size:2.5rem; margin:5px 0;">$0.00</h1>
-                <div id="finanzas-status-msg" style="padding:10px; border-radius:8px; font-size:0.85rem; font-weight:bold; margin-top:10px;"></div>
+        
+        <div id="chofer-box-finanzas" class="form-panel" style="padding: 20px 15px; margin-top: 15px;">
+            <h2 style="font-family:'Orbitron'; font-size:1.1rem; color:var(--gold); margin-bottom:15px;"><i class="fa-solid fa-wallet"></i> ESTADO DE CUENTA</h2>
+            <div style="background:#050505; padding:15px; border-radius:10px; border:1px solid #333; margin-bottom:15px;">
+                <p style="font-size:0.8rem; color:#aaa; text-transform:uppercase;">Saldo Pendiente Total</p>
+                <h1 id="finanzas-deuda-monto" style="font-size:2.5rem; margin:5px 0; color:var(--gold); font-family:'Orbitron';">$0.00</h1>
+                <div id="finanzas-desglose" style="font-size: 0.9rem; margin-top: 5px;"></div>
             </div>
-
-            <div id="finanzas-arreglo-container" style="background:rgba(13,202,240,0.05); padding:15px; border-radius:10px; border:1px solid var(--info); display:none; text-align: left;">
-                <p style="font-size:0.85rem; color:var(--info); font-family:'Orbitron'; font-weight:bold; margin-bottom:10px;"><i class="fa-solid fa-handshake"></i> PROGRESO DE ARREGLO DE PAGO</p>
-                <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:5px; color:#ddd;">
-                    <span id="finanzas-arr-pagado">$0.00 Pagado</span>
-                    <span id="finanzas-arr-total">Total: $0.00</span>
+            <div style="background:rgba(13,202,240,0.05); padding:15px; border-radius:10px; border:1px solid var(--info); text-align: left;">
+                <p style="font-size:0.85rem; color:var(--info); font-family:'Orbitron'; font-weight:bold; margin-bottom:10px;">ÚLTIMOS MOVIMIENTOS</p>
+                <div style="overflow-x: auto;">
+                    <table class="history-table" style="margin-top: 0;">
+                        <thead><tr><th>Fecha</th><th>Detalle / Método</th><th>Monto</th></tr></thead>
+                        <tbody id="tabla-historial-chofer"><tr><td colspan="3" style="text-align: center;">Cargando...</td></tr></tbody>
+                    </table>
                 </div>
-                <div style="width:100%; height:12px; background:#222; border-radius:6px; overflow:hidden; border:1px solid #444;">
-                    <div id="finanzas-arr-barra" style="height:100%; width:0%; background:var(--info); transition:0.5s;"></div>
-                </div>
-                <p id="finanzas-arr-restante" style="text-align:right; font-size:0.75rem; color:#aaa; margin-top:8px; font-weight:bold;"></p>
             </div>
         </div>
-
-        <p style="font-size: 0.75rem; color: #666; margin-top: 15px; font-style: italic;">Panel de Alertas Integrado - Master Mobility OS</p>
-
-        <div id="chofer-box-exito" class="form-panel" style="display:none;">
-            <i class="fa-solid fa-circle-check" style="font-size: 4rem; color: var(--success); margin-bottom: 20px;"></i>
-            <h2 style="color:var(--success); font-family:'Orbitron'; margin-bottom:15px;">¡PAGO RECIBIDO EXITOSAMENTE!</h2>
-            <p style="color:#ddd; font-size:1rem; line-height:1.6; margin-bottom:15px;">Gracias por realizar tu pago y mantener tu cuenta al día. Tu vehículo se encuentra <b>liberado</b> y el sistema de inmovilización ha sido desactivado.</p>
-            <p style="color:#aaa; font-size:0.9rem;">Te recomendamos seguir realizando tus pagos a tiempo para evitar futuras alertas y bloqueos del sistema.</p>
-            <p style="font-size: 0.75rem; color: #666; margin-top: 30px; font-style: italic;">Master Mobility OS</p>
-        </div>
-
     </div>
 </div>
 
+<div id="recibo-canvas" style="position: absolute; left: -9999px; width: 350px; background: #050505; color: white; padding: 25px; border: 2px solid var(--gold); border-radius: 15px; font-family: 'Inter', sans-serif; text-align: center;">
+    <h2 style="font-family: 'Orbitron'; color: var(--success); margin-bottom: 5px;">PAGO RECIBIDO</h2>
+    <h3 id="recibo-nombre" style="color: var(--gold); margin-bottom: 5px;">Nombre Conductor</h3>
+    <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;" id="recibo-fecha">Fecha y Hora</p>
+    <div style="background: #111; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <p style="color: #aaa; font-size: 0.8rem; text-transform: uppercase;">Monto Pagado</p>
+        <h1 style="font-size: 2.8rem; margin: 5px 0; color: white;" id="recibo-monto">$0.00</h1>
+        <p style="color: var(--info); font-weight: bold;" id="recibo-metodo">Método de Pago</p>
+    </div>
+    <div style="border-top: 1px dashed #333; padding-top: 15px;">
+        <p style="color: #aaa; font-size: 0.8rem; text-transform: uppercase;">Nuevo Saldo Pendiente</p>
+        <h2 style="font-family: 'Orbitron'; margin-top: 5px;" id="recibo-saldo">$0.00</h2>
+        <p id="recibo-estado" style="font-size: 0.75rem; margin-top: 5px; font-weight: bold;"></p>
+    </div>
+    <p style="font-size: 0.7rem; color: #555; margin-top: 15px; font-family: 'Orbitron';">MASTER MOBILITY OS</p>
+</div>
+
 <script>
-// Recuerda poner las credenciales correctas de Firebase aquí
 const firebaseConfig = {
     apiKey: "AIzaSyB2tSowCQwfncdpjQOYEYOEKLrDaeeap48",
     authDomain: "personal-car-19faa.firebaseapp.com",
@@ -268,495 +323,623 @@ const firebaseConfig = {
 
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const db = firebase.firestore();
-const storage = firebase.storage();
 
 let appData = { conductores: [], vehiculos: [], alertas: {} };
-let currentTgConfig = { token: '', chat: '', telefono_agente: '' };
 let choferUrlId = new URLSearchParams(window.location.search).get('driver');
 let timerInterval = null;
-let telemetriaInterval = null;
+let unsubscribeHistorialAdmin = null;
+let conductorSeleccionadoActual = null;
+let choferPendienteModal = null; 
+
+let seguridadGlobal = false; 
+
+function toggleSeguridad() {
+    seguridadGlobal = !seguridadGlobal;
+    const btn = document.getElementById('btn-seguridad');
+    if (seguridadGlobal) {
+        btn.innerHTML = '<i class="fa-solid fa-lock"></i> CLAVE ON';
+        btn.className = 'btn btn-red';
+    } else {
+        btn.innerHTML = '<i class="fa-solid fa-unlock"></i> CLAVE OFF';
+        btn.className = 'btn btn-green';
+    }
+}
+
+function setearFechaRapida(diferenciaDias) {
+    const fecha = new Date();
+    fecha.setDate(fecha.getDate() + diferenciaDias);
+    const formatoLocal = fecha.toLocaleDateString('en-CA', { timeZone: 'America/Panama' });
+    if(document.getElementById('nuevo-pago-fecha')) {
+        document.getElementById('nuevo-pago-fecha').value = formatoLocal;
+    }
+}
 
 window.addEventListener('DOMContentLoaded', () => {
     if (choferUrlId) {
         document.getElementById('panel-chofer').style.display = 'block';
         escucharAlertasChofer(choferUrlId);
-        iniciarTelemetriaFalsa();
+        cargarHistorialPagos(choferUrlId, 'tabla-historial-chofer', true);
     } else {
-        document.getElementById('panel-login-admin').style.display = 'block';
-    }
-    
-    db.collection('sistema').doc('config_portal').onSnapshot(doc => {
-        if (doc.exists) {
-            const data = doc.data();
-            currentTgConfig.token = data.tgToken || '';
-            currentTgConfig.chat = data.tgChat || '';
-            currentTgConfig.telefono_agente = data.telefono_agente || '';
-            
-            if(document.getElementById('admin-num-agente')) {
-                document.getElementById('admin-num-agente').value = currentTgConfig.telefono_agente;
-            }
-            if(choferUrlId && currentTgConfig.telefono_agente) {
-                const btnAgente = document.getElementById('btn-contact-agent');
-                const cleanNum = currentTgConfig.telefono_agente.replace(/[^0-9]/g, ''); 
-                btnAgente.href = `https://wa.me/${cleanNum}?text=Hola,%20escribo%20desde%20el%20panel%20de%20alertas.`;
-                btnAgente.style.display = 'flex';
-            }
-        }
-    });
-});
-
-function verificarPasswordAdmin(e) {
-    e.preventDefault();
-    const pass = document.getElementById('pass-modulo').value;
-    if (pass === "507Admin") {
-        document.getElementById('panel-login-admin').style.display = 'none';
         document.getElementById('panel-admin').style.display = 'block';
         conectarBaseDatosAdmin();
+    }
+});
+
+function abrirGestionIndividual(id) {
+    if (!seguridadGlobal) {
+        ejecutarAbrirGestion(id);
     } else {
-        alert("Contraseña incorrecta.");
+        choferPendienteModal = id;
+        document.getElementById('modal-pass-chofer').style.display = 'flex';
+        document.getElementById('input-modal-pass').value = '';
+        document.getElementById('input-modal-pass').focus();
     }
 }
 
-async function guardarNumeroAgente(e) {
+function validarModalPass() {
+    const pass = document.getElementById('input-modal-pass').value;
+    if (pass === '507Admin') {
+        document.getElementById('modal-pass-chofer').style.display = 'none';
+        if(choferPendienteModal) ejecutarAbrirGestion(choferPendienteModal);
+    } else {
+        alert("Contraseña incorrecta");
+    }
+}
+
+function cerrarModalPass() {
+    document.getElementById('modal-pass-chofer').style.display = 'none';
+    choferPendienteModal = null;
+}
+
+function toggleFormConductor() {
+    const modal = document.getElementById('modal-agregar-conductor');
+    if(modal.style.display === 'none' || modal.style.display === '') {
+        modal.style.display = 'flex';
+        document.getElementById('edit-chofer-id').value = ''; 
+        document.getElementById('add-nombre').value = '';
+        document.getElementById('add-telefono').value = '';
+        document.getElementById('add-placa').value = '';
+        document.getElementById('add-saldo').value = '0';
+        document.getElementById('add-cuota').value = '25';
+        const checkboxes = document.querySelectorAll('.check-dia');
+        checkboxes.forEach(cb => cb.checked = false);
+        document.getElementById('titulo-form-chofer').innerHTML = '<i class="fa-solid fa-user-plus"></i> AGREGAR CONDUCTOR';
+    } else {
+        modal.style.display = 'none';
+    }
+}
+
+function abrirEdicionConductor() {
+    if(!conductorSeleccionadoActual) return;
+    const c = conductorSeleccionadoActual;
+    const auto = appData.vehiculos.find(v => v.placa === c.auto_asignado);
+    
+    document.getElementById('edit-chofer-id').value = c.id;
+    document.getElementById('add-nombre').value = c.nombre;
+    document.getElementById('add-telefono').value = c.telefono || '';
+    document.getElementById('add-placa').value = auto ? auto.placa : '';
+    document.getElementById('add-saldo').value = parseFloat(c.deuda) || 0;
+    document.getElementById('add-cuota').value = parseFloat(c.cuota_fija) || 25;
+    
+    const checkboxes = document.querySelectorAll('.check-dia');
+    checkboxes.forEach(cb => cb.checked = (c.dias_libres || []).includes(parseInt(cb.value)));
+    
+    document.getElementById('titulo-form-chofer').innerHTML = '<i class="fa-solid fa-pen"></i> EDITAR DATOS DE ' + c.nombre;
+    document.getElementById('modal-agregar-conductor').style.display = 'flex';
+}
+
+async function guardarConductor(e) {
     e.preventDefault();
-    const num = document.getElementById('admin-num-agente').value;
+    const id = document.getElementById('edit-chofer-id').value;
+    const nombre = document.getElementById('add-nombre').value.trim();
+    const telefono = document.getElementById('add-telefono').value.replace(/\D/g,'');
+    const placa = document.getElementById('add-placa').value.trim().toUpperCase();
+    const saldo = parseFloat(document.getElementById('add-saldo').value) || 0;
+    const cuota = parseFloat(document.getElementById('add-cuota').value) || 25;
+
+    const diasLibres = Array.from(document.querySelectorAll('.check-dia:checked')).map(cb => parseInt(cb.value));
+
     try {
-        await db.collection('sistema').doc('config_portal').set({ telefono_agente: num }, { merge: true });
-        alert("Número de agente actualizado.");
-    } catch (err) { alert(err.message); }
+        const autoQuery = await db.collection('vehiculos').where('placa', '==', placa).get();
+        if(autoQuery.empty) { await db.collection('vehiculos').add({ placa: placa, estado: "activo" }); }
+
+        const datosChofer = { nombre: nombre, telefono: telefono, auto_asignado: placa, deuda: saldo, cuota_fija: cuota, dias_libres: diasLibres };
+
+        if (id) {
+            await db.collection('conductores').doc(id).update(datosChofer);
+            alert("Perfil actualizado.");
+        } else {
+            await db.collection('conductores').add(datosChofer);
+            alert("Conductor nuevo registrado.");
+        }
+
+        toggleFormConductor(); 
+        if(conductorSeleccionadoActual && id === conductorSeleccionadoActual.id) { ejecutarAbrirGestion(id); }
+    } catch(err) { alert("Error: " + err.message); }
+}
+
+async function procesarCargaDiariaAutomatica() {
+    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Panama' });
+    const configRef = db.collection('config').doc('control_diario');
+    
+    const fechaPanama = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Panama"}));
+    const diaSemana = fechaPanama.getDay();
+    
+    try {
+        const docConfig = await configRef.get();
+        let ultimaFecha = docConfig.exists ? docConfig.data().ultima_fecha : "";
+        
+        if (ultimaFecha !== hoy) {
+            const snapshotConductores = await db.collection('conductores').get();
+            const batch = db.batch();
+            
+            for (const docChofer of snapshotConductores.docs) {
+                const choferData = docChofer.data();
+                const diasLibres = choferData.dias_libres || [];
+                
+                if (!diasLibres.includes(diaSemana)) {
+                    const pagosHoy = await db.collection('pagos_historial')
+                        .where('choferId', '==', docChofer.id)
+                        .where('fecha_escogida', '==', hoy)
+                        .get();
+                        
+                    if (pagosHoy.empty) {
+                        const deudaActual = parseFloat(choferData.deuda) || 0;
+                        const cuotaDiaria = parseFloat(choferData.cuota_fija) || 25;
+                        batch.update(docChofer.ref, { deuda: deudaActual + cuotaDiaria });
+                    }
+                }
+            }
+            batch.set(configRef, { ultima_fecha: hoy }, { merge: true });
+            await batch.commit();
+        }
+    } catch (e) { console.error("Error automático:", e); }
+}
+
+function actualizarDashboardAtrasos() {
+    const dashboard = document.getElementById('dashboard-atrasados');
+    const listaHtml = document.getElementById('lista-atrasados');
+    let totalDeudaAtrasada = 0;
+    let atrasados = [];
+
+    appData.conductores.forEach(c => {
+        let deuda = parseFloat(c.deuda) || 0;
+        let cuota = parseFloat(c.cuota_fija) || 25;
+        if(deuda > cuota) {
+            let atrasoReal = deuda - cuota;
+            totalDeudaAtrasada += atrasoReal;
+            atrasados.push({ nombre: c.nombre, atraso: atrasoReal });
+        }
+    });
+
+    if (atrasados.length > 0) {
+        dashboard.style.display = 'block';
+        document.getElementById('total-deuda-calle').innerText = `$${totalDeudaAtrasada.toFixed(2)} (Atraso Extra)`;
+        
+        listaHtml.innerHTML = '';
+        atrasados.forEach(c => {
+            listaHtml.innerHTML += `
+                <div class="atraso-item">
+                    <strong style="color:var(--gold);">${c.nombre}</strong>
+                    <span style="color:var(--red); font-weight:bold;">Atraso: $${c.atraso.toFixed(2)}</span>
+                </div>
+            `;
+        });
+    } else { dashboard.style.display = 'none'; }
 }
 
 function conectarBaseDatosAdmin() {
+    procesarCargaDiariaAutomatica();
+
     db.collection('vehiculos').onSnapshot(snap => {
-        appData.vehiculos = [];
-        snap.forEach(doc => appData.vehiculos.push({ id: doc.id, ...doc.data() }));
-        renderizarAdminFlota();
+        appData.vehiculos = []; snap.forEach(doc => appData.vehiculos.push({ id: doc.id, ...doc.data() })); filtrarListaConductores();
     });
 
     db.collection('conductores').onSnapshot(snap => {
         appData.conductores = [];
         snap.forEach(doc => appData.conductores.push({ id: doc.id, ...doc.data() }));
+        filtrarListaConductores();
+        actualizarDashboardAtrasos();
         
-        const select = document.getElementById('select-chofer');
-        const selectedValue = select.value;
-        select.innerHTML = '<option value="">Seleccione un chofer...</option>' + 
-            appData.conductores.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-        if (selectedValue) select.value = selectedValue;
-
-        renderizarAdminFlota();
+        if(conductorSeleccionadoActual) {
+            const c = appData.conductores.find(x => x.id === conductorSeleccionadoActual.id);
+            if(c) { 
+                conductorSeleccionadoActual = c; 
+                actualizarPanelDesglose(c);
+            }
+        }
     });
 
     db.collection('alertas_temporizador').onSnapshot(snap => {
-        appData.alertas = {};
-        snap.forEach(doc => { appData.alertas[doc.id] = doc.data(); });
-        renderizarAdminFlota();
-        cargarAlertaExistente();
-        
-        if(!choferUrlId) {
-            clearInterval(timerInterval);
-            timerInterval = setInterval(actualizarRelojesAdmin, 1000);
-        }
+        appData.alertas = {}; snap.forEach(doc => { appData.alertas[doc.id] = doc.data(); }); filtrarListaConductores();
     });
 }
 
-function cargarAlertaExistente() {
-    const choferId = document.getElementById('select-chofer').value;
-    if (!choferId || !appData.alertas[choferId]) {
-        if(choferId) document.getElementById('form-alerta').reset();
-        document.getElementById('select-chofer').value = choferId;
-        return;
-    }
-    const alerta = appData.alertas[choferId];
-    document.getElementById('alerta-motivo').value = alerta.motivo || '';
-    if(alerta.color) document.getElementById('alerta-color').value = alerta.color;
-    document.getElementById('alerta-tiempo-falso').value = alerta.tiempoFalso || '';
-}
-
-// FUNCIÓN RESTAURADA: Seleccionar Chofer para Configurar
-function seleccionarChoferForm(id) {
-    document.getElementById('select-chofer').value = id;
-    cargarAlertaExistente();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function renderizarAdminFlota() {
-    const contenedor = document.getElementById('lista-choferes');
-    if (!contenedor) return;
+function filtrarListaConductores() {
+    const query = document.getElementById('buscador-input').value.toLowerCase();
+    const contenedor = document.getElementById('lista-busqueda-resultados');
     contenedor.innerHTML = '';
 
-    if (appData.conductores.length === 0) {
-        contenedor.innerHTML = '<p style="color: #666;">No se encontraron conductores registrados.</p>';
-        return;
-    }
-
-    appData.conductores.forEach(c => {
-        const alerta = appData.alertas[c.id];
-        const tieneAlerta = alerta && alerta.activo;
+    const filtrados = appData.conductores.filter(c => {
         const auto = appData.vehiculos.find(v => v.placa === c.auto_asignado);
-        const autoText = auto ? `${auto.modelo} (${auto.placa})` : 'Sin unidad asignada';
+        return c.nombre.toLowerCase().includes(query) || (auto && auto.placa.toLowerCase().includes(query));
+    });
+
+    filtrados.forEach(c => {
+        const auto = appData.vehiculos.find(v => v.placa === c.auto_asignado);
+        const alerta = appData.alertas[c.id];
+        let alertBadge = '';
+        if(alerta && alerta.activo && alerta.estado === 'corriendo') alertBadge = '<span class="badge bg-run">ALERTA</span>';
         
-        let statusBadge = `<span class="badge bg-off"><i class="fa-solid fa-circle"></i> Sin Alertas</span>`;
-        let timerDisplayHtml = '';
-        let btnPagarHtml = '';
-        
-        if (tieneAlerta) {
-            if (alerta.estado === 'corriendo') {
-                const colorActual = alerta.color === 'red' ? 'var(--red)' : 'var(--orange)';
-                statusBadge = `<span class="badge" style="background:${colorActual}; color:white;"><i class="fa-solid fa-hourglass-start fa-spin"></i> Reloj Corriendo</span>`;
-                timerDisplayHtml = `<div style="font-family:'Orbitron'; font-size:1.4rem; font-weight:bold; margin-top:10px; color:${colorActual}; text-shadow: 0 0 5px rgba(255,255,255,0.2);" id="admin-timer-${c.id}">00:00:00</div>`;
-                btnPagarHtml = `<button class="btn btn-green" style="padding:8px; font-size:0.7rem; margin-top:10px; font-family:'Inter';" onclick="marcarComoPagado('${c.id}')"><i class="fa-solid fa-check"></i> MARCAR COMO PAGADO</button>`;
-            } else if (alerta.estado === 'pagado') {
-                statusBadge = `<span class="badge bg-pagado"><i class="fa-solid fa-check-double"></i> Pagado / Resuelto</span>`;
-            }
+        let cuotaFija = parseFloat(c.cuota_fija) || 25;
+        let deudaTotal = parseFloat(c.deuda) || 0;
+        let deudaHoy = Math.min(deudaTotal, cuotaFija);
+        let deudaAtraso = Math.max(0, deudaTotal - cuotaFija);
+
+        let desgloseHtml = '';
+        if (deudaTotal <= 0) {
+            desgloseHtml = `<div style="font-size: 0.85rem; color: var(--success); font-weight: bold; margin-top: 5px;">Paz y Salvo ($0.00)</div>`;
+        } else {
+            desgloseHtml = `<div style="display:flex; gap:10px; margin-top:5px; font-size:0.85rem; font-weight:bold;">`;
+            if (deudaHoy > 0) desgloseHtml += `<span style="color: var(--success);">Hoy: $${deudaHoy.toFixed(2)}</span>`;
+            if (deudaAtraso > 0) desgloseHtml += `<span style="color: var(--red);">Atraso: $${deudaAtraso.toFixed(2)}</span>`;
+            desgloseHtml += `</div>`;
         }
 
-        const linkUnico = `${window.location.origin}${window.location.pathname}?driver=${c.id}`;
-
         contenedor.innerHTML += `
-            <div class="driver-card" style="${tieneAlerta ? 'border-color:' + (alerta.estado === 'pagado' ? 'var(--success)' : (alerta.color === 'red' ? 'var(--red)' : 'var(--orange)')) + '; box-shadow: 0 0 10px rgba(0,0,0,0.5);' : ''}">
-                <div>
-                    <h3 style="color: var(--gold); font-size: 1.1rem;">${c.nombre}</h3>
-                    <p style="font-size:0.8rem; color:#aaa; margin-top:3px;"><i class="fa-solid fa-car"></i> ${autoText}</p>
-                    <p style="font-size:0.8rem; color:#aaa;"><i class="fa-solid fa-phone"></i> ${c.telefono || 'Sin celular'}</p>
-                    ${statusBadge}
-                    ${timerDisplayHtml}
-                </div>
-                <div style="margin-top:15px;">
-                    <div class="link-box">
-                        <span>Link Único</span>
-                        <button class="copy-btn" onclick="copiarLink('${linkUnico}')"><i class="fa-regular fa-copy"></i> Copiar</button>
-                    </div>
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn btn-blue" style="padding:8px; font-size:0.7rem; margin-top:10px; font-family:'Inter';" onclick="seleccionarChoferForm('${c.id}')"><i class="fa-solid fa-sliders"></i> Configurar</button>
-                        ${btnPagarHtml}
-                    </div>
-                </div>
+            <div class="driver-card" onclick="abrirGestionIndividual('${c.id}')">
+                ${alertBadge}
+                <div style="font-weight: bold; color: var(--gold); font-size:0.9rem;">${c.nombre}</div>
+                <div style="font-size: 0.75rem; color: #aaa; margin-top: 5px;"><i class="fa-solid fa-car"></i> ${auto ? auto.placa : 'Sin unidad'}</div>
+                ${desgloseHtml}
             </div>
         `;
     });
 }
 
-function actualizarRelojesAdmin() {
-    const ahora = Date.now();
-    appData.conductores.forEach(c => {
-        const alerta = appData.alertas[c.id];
-        if (alerta && alerta.activo && alerta.estado === 'corriendo') {
-            const el = document.getElementById(`admin-timer-${c.id}`);
-            if (el) {
-                const restante = alerta.expiresAt - ahora;
-                if (restante <= 0) {
-                    el.innerText = "TIEMPO AGOTADO";
-                    el.style.color = "var(--red)";
-                } else {
-                    el.innerText = formatearMs(restante);
-                }
-            }
+function actualizarPanelDesglose(chofer) {
+    let cuotaFija = parseFloat(chofer.cuota_fija) || 25;
+    let deudaTotal = parseFloat(chofer.deuda) || 0;
+    let deudaHoy = Math.min(deudaTotal, cuotaFija);
+    let deudaAtraso = Math.max(0, deudaTotal - cuotaFija);
+
+    let html = `<span style="color: #aaa; font-size: 0.85rem; text-transform:uppercase;">Deuda Total:</span>
+                <div style="font-size: 2rem; font-weight: bold; font-family: 'Orbitron'; margin-bottom:10px;">$${deudaTotal.toFixed(2)}</div>
+                <div style="display:flex; gap:15px; border-top: 1px dashed #333; padding-top:10px;">`;
+    
+    if (deudaTotal <= 0) {
+        html += `<span style="color: var(--success); font-weight:bold;"><i class="fa-solid fa-check-circle"></i> Conductor Paz y Salvo</span>`;
+    } else {
+        if(deudaHoy > 0) html += `<span style="color: var(--success); font-weight:bold;">Corriente (Hoy): $${deudaHoy.toFixed(2)}</span>`;
+        if(deudaAtraso > 0) html += `<span style="color: var(--red); font-weight:bold;">Atraso Extra: $${deudaAtraso.toFixed(2)}</span>`;
+    }
+    html += `</div>`;
+    
+    document.getElementById('desglose-deuda-panel').innerHTML = html;
+}
+
+function ejecutarAbrirGestion(id) {
+    const chofer = appData.conductores.find(c => c.id === id);
+    if(!chofer) return;
+    conductorSeleccionadoActual = chofer;
+    const auto = appData.vehiculos.find(v => v.placa === chofer.auto_asignado);
+    const cuotaFija = parseFloat(chofer.cuota_fija) || 25;
+
+    document.getElementById('gestion-chofer-id').value = id;
+    document.getElementById('gestion-nombre').innerText = chofer.nombre;
+    document.getElementById('gestion-placa').innerHTML = `<i class="fa-solid fa-car"></i> Placa: ${auto ? auto.placa : 'Sin unidad'} | <span style="color:var(--info);">Cuota Fija: $${cuotaFija.toFixed(2)}</span>`;
+    
+    actualizarPanelDesglose(chofer);
+    
+    document.getElementById('nuevo-pago-monto').value = cuotaFija.toFixed(2);
+    document.getElementById('nuevo-pago-desc').value = 'Pago Regular';
+    
+    document.getElementById('modal-gestion-individual').style.display = 'flex';
+    document.getElementById('modal-form-alerta').style.display = 'none'; 
+    document.getElementById('modal-agregar-conductor').style.display = 'none'; 
+    
+    setearFechaRapida(0);
+    cargarHistorialPagos(id, 'tabla-historial-admin', false);
+}
+
+function cerrarGestionIndividual() {
+    document.getElementById('modal-gestion-individual').style.display = 'none';
+    conductorSeleccionadoActual = null;
+    if(unsubscribeHistorialAdmin) unsubscribeHistorialAdmin();
+}
+
+async function registrarPagoHistorial(e) {
+    e.preventDefault();
+    const id = document.getElementById('gestion-chofer-id').value;
+    const fechaInput = document.getElementById('nuevo-pago-fecha').value; 
+    const monto = parseFloat(document.getElementById('nuevo-pago-monto').value);
+    const desc = document.getElementById('nuevo-pago-desc').value.trim();
+    const metodo = document.getElementById('nuevo-pago-metodo').value;
+
+    const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true;
+    try {
+        await db.collection('pagos_historial').add({
+            choferId: id,
+            monto: monto,
+            descripcion: desc,
+            metodo_pago: metodo,
+            fecha_escogida: fechaInput, 
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        const deudaRestante = Math.max(0, (parseFloat(conductorSeleccionadoActual.deuda) || 0) - monto);
+        await db.collection('conductores').doc(id).update({ deuda: deudaRestante });
+
+        const cuotaFija = parseFloat(conductorSeleccionadoActual.cuota_fija) || 25;
+        document.getElementById('nuevo-pago-monto').value = cuotaFija.toFixed(2);
+        document.getElementById('nuevo-pago-desc').value = 'Pago Regular';
+        setearFechaRapida(0);
+    } catch (error) { alert("Error: " + error.message); } 
+    finally { btn.disabled = false; }
+}
+
+async function borrarPago(idPago, monto) {
+    if(!conductorSeleccionadoActual) return;
+    
+    if(confirm(`¿Estás seguro de que quieres anular este pago de $${monto}? Esto aumentará el saldo pendiente del conductor.`)) {
+        try {
+            await db.collection('pagos_historial').doc(idPago).delete();
+            const nuevaDeuda = (parseFloat(conductorSeleccionadoActual.deuda) || 0) + monto;
+            await db.collection('conductores').doc(conductorSeleccionadoActual.id).update({ deuda: nuevaDeuda });
+            alert("Pago anulado. El saldo se ha actualizado.");
+        } catch (error) {
+            alert("Error al anular pago: " + error.message);
         }
-    });
+    }
+}
+
+function cargarHistorialPagos(choferId, tableBodyId, isChoferView) {
+    if(unsubscribeHistorialAdmin && !isChoferView) unsubscribeHistorialAdmin();
+    const tbody = document.getElementById(tableBodyId);
+    
+    const unsubs = db.collection('pagos_historial')
+      .where('choferId', '==', choferId)
+      .onSnapshot(snap => {
+          let pagos = [];
+          snap.forEach(doc => { pagos.push({ idDoc: doc.id, ...doc.data() }); });
+          
+          pagos.sort((a, b) => {
+              const timeA = a.timestamp ? a.timestamp.toMillis() : Date.now();
+              const timeB = b.timestamp ? b.timestamp.toMillis() : Date.now();
+              return timeB - timeA;
+          });
+
+          tbody.innerHTML = '';
+          if(pagos.length === 0) {
+              tbody.innerHTML = `<tr><td colspan="${isChoferView ? '3' : '4'}" style="text-align: center;">No hay transacciones.</td></tr>`;
+              return;
+          }
+          
+          pagos.forEach(p => {
+              const fechaMostrar = p.fecha_escogida || 'Sin fecha';
+              const metodoMostrar = p.metodo_pago ? `[${p.metodo_pago}] ` : '';
+              
+              if(isChoferView) {
+                  tbody.innerHTML += `
+                    <tr>
+                        <td style="white-space:nowrap; font-size:0.75rem;">${fechaMostrar}</td>
+                        <td style="font-size:0.75rem;"><span style="color:var(--info)">${metodoMostrar}</span>${p.descripcion}</td>
+                        <td style="color:var(--success); font-weight:bold;">$${parseFloat(p.monto).toFixed(2)}</td>
+                    </tr>
+                  `;
+              } else {
+                  tbody.innerHTML += `
+                    <tr>
+                        <td style="white-space:nowrap; font-size:0.75rem;">${fechaMostrar}</td>
+                        <td style="font-size:0.75rem;"><span style="color:var(--info)">${metodoMostrar}</span><br>${p.descripcion}</td>
+                        <td style="color:var(--success); font-weight:bold;">$${parseFloat(p.monto).toFixed(2)}</td>
+                        <td style="text-align:right; white-space:nowrap;">
+                            <button onclick="compartirRecibo('${p.fecha_escogida}', ${p.monto}, '${p.metodo_pago}')" class="btn btn-green btn-small" style="width: auto; margin-right: 5px; font-weight:bold;"><i class="fa-brands fa-whatsapp"></i> ENVIAR</button>
+                            <button onclick="borrarPago('${p.idDoc}', ${p.monto})" class="btn btn-red btn-small" style="width: auto;"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                  `;
+              }
+          });
+      });
+    if(!isChoferView) unsubscribeHistorialAdmin = unsubs;
+}
+
+// ==== AQUÍ ESTÁ LA NUEVA FUNCIÓN CON LA LÓGICA Y EL WEB SHARE API ====
+async function compartirRecibo(fechaPago, monto, metodo) {
+    if(!conductorSeleccionadoActual || !conductorSeleccionadoActual.telefono) {
+        alert("El conductor no tiene un número de teléfono registrado.");
+        return;
+    }
+
+    const c = conductorSeleccionadoActual;
+    const telefono = c.telefono;
+    const cleanPhone = telefono.replace(/\D/g, '');
+    const deudaActual = parseFloat(c.deuda) || 0;
+    const cuotaFija = parseFloat(c.cuota_fija) || 25;
+    const linkDriver = `${window.location.origin}${window.location.pathname}?driver=${c.id}`;
+
+    // Lógica mejorada del estado de cuenta según tus instrucciones
+    let colorEstado = "#00ff88";
+    let textoEstado = "";
+    let mensajeEstado = "";
+    
+    if (deudaActual === 0) {
+        colorEstado = "#00ff88"; // Verde
+        textoEstado = "🟢 ESTADO DE CUENTA AL DÍA";
+        mensajeEstado = "🟢 No hay saldo pendiente. Estado de cuenta al día.";
+    } else if (deudaActual <= cuotaFija) { // Debe solo lo de hoy (ej. $25)
+        colorEstado = "#3b82f6"; // Azul para la cuota del día
+        textoEstado = `🔵 CUENTA CORRIENTE AL DÍA`;
+        mensajeEstado = `🔵 Saldo pendiente $${deudaActual.toFixed(2)} del día de hoy. Estado de cuenta corriente al día.`;
+    } else { // Debe más de 1 día (> $25)
+        colorEstado = "#d32f2f"; // Rojo
+        textoEstado = `🔴 ATRASADO (Debe $${deudaActual.toFixed(2)})`;
+        mensajeEstado = `🔴 ADVERTENCIA: Saldo pendiente $${deudaActual.toFixed(2)}. Tiene días atrasados.`;
+    }
+
+    // Actualizamos el recibo visual (Canvas)
+    document.getElementById('recibo-nombre').innerText = c.nombre;
+    document.getElementById('recibo-fecha').innerText = `Pago correspondiente a: ${fechaPago}`;
+    document.getElementById('recibo-monto').innerText = `$${monto.toFixed(2)}`;
+    document.getElementById('recibo-metodo').innerText = metodo || "Efectivo";
+    document.getElementById('recibo-saldo').innerText = `$${deudaActual.toFixed(2)}`;
+    document.getElementById('recibo-saldo').style.color = (deudaActual > cuotaFija) ? "var(--red)" : "var(--success)";
+    document.getElementById('recibo-estado').innerText = textoEstado;
+    document.getElementById('recibo-estado').style.color = colorEstado;
+
+    const textoMensaje = `🚗 *COMPROBANTE DE PAGO*\n\nHola ${c.nombre},\nHemos registrado tu pago de manera exitosa.\n\n*Fecha del abono:* ${fechaPago}\n*Monto Pagado:* $${monto.toFixed(2)}\n\n*Estado Actual:* ${mensajeEstado}\n\n🔗 *Revisa tu estado de cuenta aquí:*\n${linkDriver}\n\nGracias,\nMaster Mobility.`;
+
+    try {
+        // Breve pausa para asegurar que el HTML se actualice visualmente antes de la foto
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const elementoRecibo = document.getElementById('recibo-canvas');
+        const canvas = await html2canvas(elementoRecibo, { backgroundColor: '#050505', scale: 2 });
+        
+        // 1. Convertir la imagen a un archivo real que el sistema del celular entienda
+        const imagenDataUrl = canvas.toDataURL("image/png");
+        const respuesta = await fetch(imagenDataUrl);
+        const blob = await respuesta.blob();
+        const archivoImagen = new File([blob], "estado_cuenta.png", { type: "image/png" });
+
+        // 2. Intentar usar el menú nativo de Compartir del celular (Web Share API)
+        if (navigator.canShare && navigator.canShare({ files: [archivoImagen] })) {
+            try {
+                await navigator.share({
+                    title: 'Comprobante de Pago',
+                    text: textoMensaje,
+                    files: [archivoImagen] // Aquí se adjunta la foto
+                });
+                console.log("Recibo compartido con éxito.");
+            } catch (error) {
+                console.log("Envío cancelado o fallido:", error);
+            }
+        } else {
+            // Alternativa por si lo abres en Computadora (no soporta enviar imágenes por link)
+            alert("Tu dispositivo no soporta enviar la imagen automáticamente. Se abrirá WhatsApp enviando solo el texto.");
+            const urlWa = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(textoMensaje)}`;
+            window.open(urlWa, '_blank');
+        }
+    } catch (err) {
+        alert("Error al generar el recibo: " + err.message);
+    }
+}
+// ==== FIN DE LA NUEVA FUNCIÓN ====
+
+function prepararAlertaManual() {
+    if(!conductorSeleccionadoActual) return;
+    const id = conductorSeleccionadoActual.id;
+    document.getElementById('select-chofer').value = id;
+    document.getElementById('nombre-alerta-manual').innerText = conductorSeleccionadoActual.nombre;
+    
+    const alerta = appData.alertas[id];
+    if (alerta) {
+        document.getElementById('alerta-motivo').value = alerta.motivo || '';
+        if(alerta.color) document.getElementById('alerta-color').value = alerta.color;
+        document.getElementById('alerta-tiempo-falso').value = alerta.tiempoFalso || '';
+    } else {
+        document.getElementById('form-alerta').reset();
+    }
+    document.getElementById('modal-form-alerta').style.display = 'flex';
+}
+
+function cerrarAlertaManual() {
+    document.getElementById('modal-form-alerta').style.display = 'none';
 }
 
 async function activarAlerta(e) {
     e.preventDefault();
     const choferId = document.getElementById('select-chofer').value;
-    if(!choferId) return alert("Selecciona un conductor válido.");
+    const btn = document.getElementById('btn-submit-alerta'); btn.disabled = true;
 
-    const btn = document.getElementById('btn-submit-alerta');
-    btn.disabled = true;
-    btn.innerText = "PROCESANDO ENLACE...";
-
-    const chofer = appData.conductores.find(c => c.id === choferId);
-    const motivo = document.getElementById('alerta-motivo').value;
-    const color = document.getElementById('alerta-color').value;
-    const tiempoFalso = document.getElementById('alerta-tiempo-falso').value;
-    const tiempoVal = parseInt(document.getElementById('alerta-tiempo').value);
-    const unidad = document.getElementById('alerta-unidad').value;
-
-    let minutos = unidad === 'horas' ? tiempoVal * 60 : tiempoVal;
-    const duracionMs = minutos * 60 * 1000;
-    const ahora = Date.now();
-    const expiracion = ahora + duracionMs;
+    let minutos = document.getElementById('alerta-unidad').value === 'horas' 
+        ? parseInt(document.getElementById('alerta-tiempo').value) * 60 
+        : parseInt(document.getElementById('alerta-tiempo').value);
 
     try {
-        let imageUrl = '';
-        const fileInput = document.getElementById('alerta-foto');
-        if (fileInput.files.length > 0) {
-            const f = fileInput.files[0];
-            const ref = storage.ref(`alertas_imagenes/${Date.now()}_${f.name.replace(/[^a-zA-Z0-9.]/g,'')}`);
-            await ref.put(f);
-            imageUrl = await ref.getDownloadURL();
-        } else if (appData.alertas[choferId] && appData.alertas[choferId].foto) {
-            imageUrl = appData.alertas[choferId].foto;
-        }
-
         await db.collection('alertas_temporizador').doc(choferId).set({
             choferId: choferId,
-            choferNombre: chofer.nombre,
-            motivo: motivo,
-            color: color,
-            foto: imageUrl,
-            tiempoFalso: tiempoFalso,
-            duracionMs: duracionMs,
-            expiresAt: expiracion,
+            choferNombre: conductorSeleccionadoActual.nombre,
+            motivo: document.getElementById('alerta-motivo').value,
+            color: document.getElementById('alerta-color').value,
+            tiempoFalso: document.getElementById('alerta-tiempo-falso').value,
+            duracionMs: minutos * 60 * 1000,
+            expiresAt: Date.now() + (minutos * 60 * 1000),
             estado: 'corriendo', 
-            notifiedTelegram: false,
-            linkAbiertoNotificado: false,
             activo: true
         });
-
-        alert("¡Alerta activada y reloj corriendo desde este segundo!");
-        document.getElementById('alerta-foto').value = '';
-    } catch(err) {
-        alert("Error al crear alerta: " + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-bolt"></i> INICIAR TIEMPO AHORA';
-    }
-}
-
-async function marcarComoPagado(choferId) {
-    if(confirm("¿Confirmas que el conductor realizó el pago?\nSu pantalla cambiará automáticamente a un mensaje de agradecimiento.")) {
-        try {
-            await db.collection('alertas_temporizador').doc(choferId).update({
-                estado: 'pagado',
-                color: 'success'
-            });
-            alert("Marcado como pagado exitosamente.");
-        } catch(e) { alert(e.message); }
-    }
+        alert("Cronómetro manual activado.");
+    } catch(err) { alert("Error: " + err.message); } 
+    finally { btn.disabled = false; }
 }
 
 async function removerAlerta() {
     const choferId = document.getElementById('select-chofer').value;
-    if (!choferId) return alert("Selecciona un conductor para borrar su alerta.");
-    if (!confirm("¿Deseas eliminar completamente la alerta de este conductor?")) return;
-
     try {
-        if(appData.alertas[choferId] && appData.alertas[choferId].foto) {
-            try { await storage.refFromURL(appData.alertas[choferId].foto).delete(); } catch(e){}
-        }
         await db.collection('alertas_temporizador').doc(choferId).delete();
-        document.getElementById('form-alerta').reset();
-        alert("Alerta eliminada de la base de datos.");
+        document.getElementById('modal-form-alerta').style.display = 'none';
+        alert("Alerta desactivada.");
     } catch(e) { alert(e.message); }
 }
 
-let alertaChoferLocal = null;
+function copiarLinkConductor() {
+    const id = document.getElementById('gestion-chofer-id').value;
+    navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?driver=${id}`).then(() => alert("Enlace copiado al portapapeles."));
+}
+
 function escucharAlertasChofer(id) {
-    
-    // 1. ESCUCHA DE FINANZAS (DEUDA Y ARREGLO)
-    db.collection('conductores').doc(id).onSnapshot(docCond => {
-        if(!docCond.exists) return;
-        const c = docCond.data();
-        
-        const deudReg = parseFloat(c.deuda) || 0;
-        const arrTot = parseFloat(c.arreglo_deuda_total) || 0;
-        const arrPag = parseFloat(c.arreglo_pagado) || 0;
-        let arrRestante = arrTot - arrPag;
-        if(arrRestante < 0) arrRestante = 0;
-        const tieneArregloActivo = (c.arreglo_activo === 'si' && arrRestante > 0);
+    db.collection('conductores').doc(id).onSnapshot(doc => {
+        if(doc.exists) {
+            let data = doc.data();
+            let deudaActual = parseFloat(data.deuda) || 0;
+            let cuota = parseFloat(data.cuota_fija) || 25;
+            let deudaHoy = Math.min(deudaActual, cuota);
+            let deudaAtraso = Math.max(0, deudaActual - cuota);
 
-        document.getElementById('chofer-box-finanzas').style.display = 'block';
-        
-        const elDeudaMonto = document.getElementById('finanzas-deuda-monto');
-        const elStatusMsg = document.getElementById('finanzas-status-msg');
-        
-        elDeudaMonto.innerText = `$${deudReg.toFixed(2)}`;
-        
-        if(deudReg > 0) {
-            elDeudaMonto.style.color = "var(--red)";
-            elStatusMsg.style.background = "rgba(211,47,47,0.1)";
-            elStatusMsg.style.color = "var(--red)";
-            elStatusMsg.style.border = "1px solid var(--red)";
-            elStatusMsg.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> TIENES SALDO PENDIENTE ATRASADO';
-        } else {
-            elDeudaMonto.style.color = "var(--success)";
-            elStatusMsg.style.background = "rgba(0,255,136,0.1)";
-            elStatusMsg.style.color = "var(--success)";
-            elStatusMsg.style.border = "1px solid var(--success)";
-            elStatusMsg.innerHTML = '<i class="fa-solid fa-check-circle"></i> ESTÁS AL DÍA CON TUS DÍAS REGULARES';
-        }
-
-        const elArregloCont = document.getElementById('finanzas-arreglo-container');
-        if(tieneArregloActivo) {
-            elArregloCont.style.display = 'block';
-            let pct = (arrTot > 0) ? (arrPag / arrTot) * 100 : 0;
-            if(pct > 100) pct = 100;
+            document.getElementById('finanzas-deuda-monto').innerText = `$${deudaActual.toFixed(2)}`;
             
-            document.getElementById('finanzas-arr-pagado').innerText = `$${arrPag.toFixed(2)} Pagado`;
-            document.getElementById('finanzas-arr-total').innerText = `Total: $${arrTot.toFixed(2)}`;
-            document.getElementById('finanzas-arr-barra').style.width = `${pct}%`;
-            document.getElementById('finanzas-arr-restante').innerText = `Saldo Restante: $${arrRestante.toFixed(2)}`;
-        } else {
-            elArregloCont.style.display = 'none';
+            let desglose = "";
+            if (deudaActual <= 0) {
+                desglose = "<span style='color:var(--success)'>Paz y Salvo</span>";
+            } else {
+                if(deudaHoy > 0) desglose += `<span style='color:var(--success); margin-right:10px;'>Hoy: $${deudaHoy.toFixed(2)}</span>`;
+                if(deudaAtraso > 0) desglose += `<span style='color:var(--red)'>Atraso: $${deudaAtraso.toFixed(2)}</span>`;
+            }
+            document.getElementById('finanzas-desglose').innerHTML = desglose;
         }
     });
-
-    // 2. ESCUCHA DE ALERTA, GPS Y TEMPORIZADOR
-    db.collection('alertas_temporizador').doc(id).onSnapshot(async (doc) => {
-        const cajaAlerta = document.getElementById('chofer-box-alerta');
-        const cajaExito = document.getElementById('chofer-box-exito');
-        const cajaFinanzas = document.getElementById('chofer-box-finanzas');
-        const wrapper = document.getElementById('timer-wrapper');
-        const panelGps = document.getElementById('panel-gps');
-        const plazoFalso = document.getElementById('chofer-plazo-falso');
-        
+    db.collection('alertas_temporizador').doc(id).onSnapshot(doc => {
+        const cA = document.getElementById('chofer-box-alerta');
         if (!doc.exists || !doc.data().activo) {
-            alertaChoferLocal = null;
-            clearInterval(timerInterval);
-            cajaExito.style.display = 'none';
-            cajaAlerta.style.display = 'block';
-            document.getElementById('chofer-titulo-estado').innerText = "SIN ALERTAS ACTIVAS";
-            document.getElementById('chofer-motivo').innerText = "Tu cuenta no registra advertencias pendientes en este momento. Sigue conduciendo de forma responsable.";
+            cA.style.background = "var(--card)";
+            cA.style.borderColor = "#222";
+            document.getElementById('chofer-titulo-estado').innerText = "SISTEMA ACTIVO";
+            document.getElementById('chofer-motivo').innerText = "Vehículo autorizado para operaciones. Todo en orden.";
             document.getElementById('timer-display').innerText = "00:00:00";
-            wrapper.style.color = "var(--success)";
-            cajaAlerta.style.borderColor = "#222";
-            document.getElementById('container-img-chofer').innerHTML = '';
-            panelGps.style.display = 'none';
-            plazoFalso.style.display = 'none';
             return;
         }
-
         const data = doc.data();
-        alertaChoferLocal = data;
-
-        if (data.estado === 'pagado') {
-            clearInterval(timerInterval);
-            cajaAlerta.style.display = 'none';
-            cajaFinanzas.style.display = 'none'; // Se ocultan finanzas si ya pagó
-            cajaExito.style.display = 'block';
-            return;
-        }
-
-        cajaExito.style.display = 'none';
-        cajaAlerta.style.display = 'block';
-        cajaFinanzas.style.display = 'block';
-        panelGps.style.display = 'flex';
+        cA.style.background = data.color === 'red' ? "rgba(211,47,47,0.15)" : "rgba(255,107,0,0.15)";
+        cA.style.borderColor = data.color === 'red' ? "var(--red)" : "var(--orange)";
         
-        // AVISAR A TELEGRAM CUANDO ABRE EL LINK POR PRIMERA VEZ
-        if (!data.linkAbiertoNotificado) {
-            db.collection('alertas_temporizador').doc(id).update({ linkAbiertoNotificado: true });
-            enviarNotificacionTelegram(`👀 *LINK ABIERTO*\nEl conductor *${data.choferNombre}* acaba de abrir el enlace de alerta.\n¡Recuerda que el reloj ya estaba corriendo!`);
-        }
-        
-        document.getElementById('chofer-titulo-estado').innerText = data.color === 'red' ? "⚠️ ALERTA CRÍTICA DE EMPRESA" : "🚨 ADVERTENCIA TEMPORIZADA";
+        document.getElementById('chofer-titulo-estado').innerText = data.color === 'red' ? "⚠️ RESTRICCIÓN DE UNIDAD" : "🚨 NOTIFICACIÓN DE PAGO";
         document.getElementById('chofer-motivo').innerText = data.motivo;
         
-        if(data.tiempoFalso && data.tiempoFalso.trim() !== '') {
-            document.getElementById('txt-plazo').innerText = data.tiempoFalso;
-            plazoFalso.style.display = 'inline-block';
+        if (data.tiempoFalso) {
+            clearInterval(timerInterval);
+            document.getElementById('timer-display').innerText = data.tiempoFalso;
         } else {
-            plazoFalso.style.display = 'none';
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                const res = data.expiresAt - Date.now();
+                if(res <= 0) { document.getElementById('timer-display').innerText = "00:00:00"; clearInterval(timerInterval); }
+                else { document.getElementById('timer-display').innerText = new Date(res).toISOString().substr(11, 8); }
+            }, 1000);
         }
-
-        const colorVar = data.color === 'red' ? 'var(--red)' : 'var(--orange)';
-        cajaAlerta.style.borderColor = colorVar;
-        document.getElementById('chofer-titulo-estado').style.color = colorVar;
-        wrapper.style.color = colorVar;
-
-        if (data.foto) {
-            document.getElementById('container-img-chofer').innerHTML = `<img src="${data.foto}" class="img-alerta" onclick="window.open('${data.foto}')">`;
-        } else {
-            document.getElementById('container-img-chofer').innerHTML = '';
-        }
-        
-        clearInterval(timerInterval);
-        timerInterval = setInterval(actualizarRelojChofer, 1000);
-        actualizarRelojChofer();
     });
-}
-
-function actualizarRelojChofer() {
-    if (!alertaChoferLocal || alertaChoferLocal.estado === 'pagado') return;
-    
-    const ahora = Date.now();
-    const restante = alertaChoferLocal.expiresAt - ahora;
-    
-    if (restante <= 0) {
-        document.getElementById('timer-display').innerText = "00:00:00";
-        evaluarExpiracionServidor(alertaChoferLocal.choferId, alertaChoferLocal);
-        
-        document.getElementById('gps-status-txt').innerText = "INMOVILIZADO";
-        document.getElementById('gps-status-txt').style.color = "var(--red)";
-        document.getElementById('gps-status-txt').style.borderColor = "var(--red)";
-        document.getElementById('gps-status-txt').style.background = "rgba(255,0,0,0.1)";
-        
-        const blip = document.querySelector('.telemetry-dot');
-        if(blip) {
-            blip.style.animation = "none";
-            blip.style.background = "var(--red)";
-            blip.style.boxShadow = "0 0 10px var(--red)";
-        }
-        clearInterval(timerInterval);
-    } else {
-        document.getElementById('timer-display').innerText = formatearMs(restante);
-    }
-}
-
-async function evaluarExpiracionServidor(id, alerta) {
-    if (alerta.notifiedTelegram === false) {
-        alerta.notifiedTelegram = true; 
-        try {
-            await db.collection('alertas_temporizador').doc(id).update({ notifiedTelegram: true });
-            enviarNotificacionTelegram(`🚨 *¡TIEMPO AGOTADO!*\nEl temporizador del conductor *${alerta.choferNombre}* ha llegado a 0.\nMotivo asignado: ${alerta.motivo}`);
-        } catch(e) { console.log(e); }
-    }
-}
-
-function formatearMs(ms) {
-    let segundos = Math.floor(ms / 1000);
-    let minutos = Math.floor(segundos / 60);
-    let horas = Math.floor(minutos / 60);
-    
-    segundos = segundos % 60;
-    minutos = minutos % 60;
-    
-    return String(horas).padStart(2, '0') + ':' + String(minutos).padStart(2, '0') + ':' + String(segundos).padStart(2, '0');
-}
-
-function enviarNotificacionTelegram(msg) {
-    if (currentTgConfig.token && currentTgConfig.chat) {
-        fetch(`https://api.telegram.org/bot${currentTgConfig.token}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: currentTgConfig.chat, text: msg, parse_mode: 'Markdown' })
-        }).catch(e => console.log("Telegram Error: ", e));
-    }
-}
-
-function copiarLink(txt) {
-    navigator.clipboard.writeText(txt).then(() => {
-        alert("Enlace único copiado al portapapeles.");
-    }).catch(() => { alert("Enlace: " + txt); });
-}
-
-function iniciarTelemetriaFalsa() {
-    const statuses = ["RASTREANDO SEÑAL...", "CONECTANDO A SATÉLITE...", "TRIANGULANDO...", "VEHÍCULO UBICADO"];
-    let statusIndex = 0;
-
-    clearInterval(telemetriaInterval);
-    telemetriaInterval = setInterval(() => {
-        if(alertaChoferLocal && alertaChoferLocal.estado === 'corriendo' && (alertaChoferLocal.expiresAt - Date.now() > 0)) {
-            const latFalsa = 8.4200 + (Math.random() * 0.0099);
-            const lonFalsa = -82.4300 - (Math.random() * 0.0099);
-            
-            document.getElementById('gps-lat').innerText = latFalsa.toFixed(4);
-            document.getElementById('gps-lon').innerText = lonFalsa.toFixed(4);
-            
-            const blip = document.getElementById('fake-blip');
-            if(blip) {
-                blip.style.top = (45 + (Math.random() * 10)) + '%';
-                blip.style.left = (45 + (Math.random() * 10)) + '%';
-            }
-            
-            if(statusIndex < statuses.length - 1) {
-                statusIndex++;
-                document.getElementById('gps-status-txt').innerText = statuses[statusIndex];
-            } else {
-                 document.getElementById('gps-status-txt').innerText = "VEHÍCULO UBICADO";
-            }
-        }
-    }, 3500); 
 }
 </script>
 </body>
 </html>
+

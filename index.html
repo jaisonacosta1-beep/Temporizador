@@ -51,7 +51,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 .atraso-item:last-child { border-bottom: none; }
 
 .timer-container { margin: 15px auto; background: linear-gradient(145deg, #0a0a0a, #151515); padding: 15px 5px; border-radius: 15px; border: 2px solid currentColor; box-shadow: inset 0 0 20px rgba(0,0,0,0.9); text-align: center; }
-.timer-box { font-family: 'Orbitron', sans-serif; font-size: clamp(2rem, 13vw, 4rem); font-weight: 900; letter-spacing: 2px; text-shadow: 0 0 15px currentColor; line-height: 1; }
+.timer-box { font-family: 'Orbitron', sans-serif; font-size: clamp(2rem, 13vw, 4rem); font-weight: 900; letter-spacing: 2px; text-shadow: 0 0 15px currentColor; line-height: 1; transition: color 0.3s ease; }
 .chofer-container { max-width: 600px; margin: 20px auto; padding: 15px; text-align: center; }
 
 /* Botones de fecha rápida */
@@ -280,7 +280,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
             <div style="background:#050505; padding:15px; border-radius:10px; border:1px solid #333; margin-bottom:15px;">
                 <p style="font-size:0.8rem; color:#aaa; text-transform:uppercase;">Saldo Pendiente Total</p>
                 <h1 id="finanzas-deuda-monto" style="font-size:2.5rem; margin:5px 0; color:var(--gold); font-family:'Orbitron';">$0.00</h1>
-                <div id="finanzas-desglose" style="font-size: 0.9rem; margin-top: 5px;"></div>
+                <div id="finanzas-desglose" style="font-size: 0.9rem; margin-top: 5px; text-align:left;"></div>
             </div>
             <div style="background:rgba(13,202,240,0.05); padding:15px; border-radius:10px; border:1px solid var(--info); text-align: left;">
                 <p style="font-size:0.85rem; color:var(--info); font-family:'Orbitron'; font-weight:bold; margin-bottom:10px;">ÚLTIMOS MOVIMIENTOS</p>
@@ -458,12 +458,21 @@ async function guardarConductor(e) {
         const autoQuery = await db.collection('vehiculos').where('placa', '==', placa).get();
         if(autoQuery.empty) { await db.collection('vehiculos').add({ placa: placa, estado: "activo" }); }
 
-        const datosChofer = { nombre: nombre, telefono: telefono, auto_asignado: placa, deuda: saldo, cuota_fija: cuota, dias_libres: diasLibres };
+        const datosChofer = { 
+            nombre: nombre, 
+            telefono: telefono, 
+            auto_asignado: placa, 
+            deuda: saldo, 
+            cuota_fija: cuota, 
+            dias_libres: diasLibres 
+        };
 
         if (id) {
             await db.collection('conductores').doc(id).update(datosChofer);
             alert("Perfil actualizado.");
         } else {
+            // SOLUCION COBRO DUPLICADO: Se inicializa la fecha para evitar bugs en la primera corrida
+            datosChofer.ultima_fecha_cobro = ""; 
             await db.collection('conductores').add(datosChofer);
             alert("Conductor nuevo registrado.");
         }
@@ -473,24 +482,23 @@ async function guardarConductor(e) {
     } catch(err) { alert("Error: " + err.message); }
 }
 
+// SOLUCION COBRO DUPLICADO: Esta función ahora escribe la fecha por conductor de forma individual (Idempotencia)
 async function procesarCargaDiariaAutomatica() {
     const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Panama' });
-    const configRef = db.collection('config').doc('control_diario');
-    
     const fechaPanama = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Panama"}));
     const diaSemana = fechaPanama.getDay();
     
     try {
-        const docConfig = await configRef.get();
-        let ultimaFecha = docConfig.exists ? docConfig.data().ultima_fecha : "";
+        const snapshotConductores = await db.collection('conductores').get();
+        const batch = db.batch();
+        let actualizados = 0;
         
-        if (ultimaFecha !== hoy) {
-            const snapshotConductores = await db.collection('conductores').get();
-            const batch = db.batch();
+        for (const docChofer of snapshotConductores.docs) {
+            const choferData = docChofer.data();
+            const diasLibres = choferData.dias_libres || [];
             
-            for (const docChofer of snapshotConductores.docs) {
-                const choferData = docChofer.data();
-                const diasLibres = choferData.dias_libres || [];
+            // Solo evaluar si este conductor específico no ha sido procesado hoy
+            if (choferData.ultima_fecha_cobro !== hoy) {
                 
                 if (!diasLibres.includes(diaSemana)) {
                     const pagosHoy = await db.collection('pagos_historial')
@@ -501,11 +509,23 @@ async function procesarCargaDiariaAutomatica() {
                     if (pagosHoy.empty) {
                         const deudaActual = parseFloat(choferData.deuda) || 0;
                         const cuotaDiaria = parseFloat(choferData.cuota_fija) || 25;
-                        batch.update(docChofer.ref, { deuda: deudaActual + cuotaDiaria });
+                        batch.update(docChofer.ref, { 
+                            deuda: deudaActual + cuotaDiaria,
+                            ultima_fecha_cobro: hoy 
+                        });
+                    } else {
+                        // Si pagó, solo le actualizamos la fecha
+                        batch.update(docChofer.ref, { ultima_fecha_cobro: hoy });
                     }
+                } else {
+                    // Si es día libre, marcamos el día como procesado sin sumar deuda
+                    batch.update(docChofer.ref, { ultima_fecha_cobro: hoy });
                 }
+                actualizados++;
             }
-            batch.set(configRef, { ultima_fecha: hoy }, { merge: true });
+        }
+        
+        if (actualizados > 0) {
             await batch.commit();
         }
     } catch (e) { console.error("Error automático:", e); }
@@ -596,7 +616,7 @@ function filtrarListaConductores() {
             desgloseHtml = `<div style="font-size: 0.85rem; color: var(--success); font-weight: bold; margin-top: 5px;">Paz y Salvo ($0.00)</div>`;
         } else {
             desgloseHtml = `<div style="display:flex; gap:10px; margin-top:5px; font-size:0.85rem; font-weight:bold;">`;
-            if (deudaHoy > 0) desgloseHtml += `<span style="color: var(--success);">Hoy: $${deudaHoy.toFixed(2)}</span>`;
+            if (deudaHoy > 0) desgloseHtml += `<span style="color: var(--info);">Hoy: $${deudaHoy.toFixed(2)}</span>`;
             if (deudaAtraso > 0) desgloseHtml += `<span style="color: var(--red);">Atraso: $${deudaAtraso.toFixed(2)}</span>`;
             desgloseHtml += `</div>`;
         }
@@ -620,13 +640,14 @@ function actualizarPanelDesglose(chofer) {
 
     let html = `<span style="color: #aaa; font-size: 0.85rem; text-transform:uppercase;">Deuda Total:</span>
                 <div style="font-size: 2rem; font-weight: bold; font-family: 'Orbitron'; margin-bottom:10px;">$${deudaTotal.toFixed(2)}</div>
-                <div style="display:flex; gap:15px; border-top: 1px dashed #333; padding-top:10px;">`;
+                <div style="display:flex; flex-direction:column; gap:5px; border-top: 1px dashed #333; padding-top:10px; font-size:0.9rem;">`;
     
+    // SOLUCION ESTADO DE CUENTA: Desglose claro para el administrador
     if (deudaTotal <= 0) {
-        html += `<span style="color: var(--success); font-weight:bold;"><i class="fa-solid fa-check-circle"></i> Conductor Paz y Salvo</span>`;
+        html += `<div style="color: var(--success); font-weight:bold;"><i class="fa-solid fa-check-circle"></i> Conductor Paz y Salvo</div>`;
     } else {
-        if(deudaHoy > 0) html += `<span style="color: var(--success); font-weight:bold;">Corriente (Hoy): $${deudaHoy.toFixed(2)}</span>`;
-        if(deudaAtraso > 0) html += `<span style="color: var(--red); font-weight:bold;">Atraso Extra: $${deudaAtraso.toFixed(2)}</span>`;
+        if(deudaHoy > 0) html += `<div style="color: var(--info); font-weight:bold;">CUOTA DE HOY (Vence 11:59 PM): <span style="color:white;">$${deudaHoy.toFixed(2)}</span></div>`;
+        if(deudaAtraso > 0) html += `<div style="color: var(--red); font-weight:bold;">SALDO VENCIDO (Atraso): <span style="color:white;">$${deudaAtraso.toFixed(2)}</span></div>`;
     }
     html += `</div>`;
     
@@ -833,7 +854,6 @@ async function compartirRecibo(fechaPago, monto, metodo) {
     }
 }
 
-// ==== NUEVA FUNCIÓN: COMPARTIR ESTADO DE CUENTA GLOBAL ====
 async function compartirEstadoCuenta() {
     if(!conductorSeleccionadoActual || !conductorSeleccionadoActual.telefono) {
         alert("El conductor no tiene un número de teléfono registrado.");
@@ -847,7 +867,6 @@ async function compartirEstadoCuenta() {
     const cuotaFija = parseFloat(c.cuota_fija) || 25;
     const linkDriver = `${window.location.origin}${window.location.pathname}?driver=${c.id}`;
     
-    // Obtener fecha local de Panamá
     const fechaHoy = new Date().toLocaleDateString('es-PA', { timeZone: 'America/Panama' });
 
     let colorEstado = "#00ff88";
@@ -871,7 +890,6 @@ async function compartirEstadoCuenta() {
         document.getElementById('estado-mensaje').style.background = "rgba(211,47,47,0.1)";
     }
 
-    // Llenar el nuevo Canvas
     document.getElementById('estado-nombre').innerText = c.nombre;
     document.getElementById('estado-fecha').innerText = `Corte del sistema al: ${fechaHoy}`;
     document.getElementById('estado-saldo').innerText = `$${deudaActual.toFixed(2)}`;
@@ -882,7 +900,7 @@ async function compartirEstadoCuenta() {
     const textoMensaje = `📊 *REPORTE DE ESTADO DE CUENTA*\n\nHola ${c.nombre},\nEste es un resumen de tu saldo actual en la plataforma:\n\n*${mensajeWa}*\n\n🔗 *Puedes verificar el detalle de tus movimientos y el tiempo restante de tu unidad en este link único:*\n${linkDriver}\n\nAtte,\nMaster Mobility.`;
 
     try {
-        await new Promise(resolve => setTimeout(resolve, 100)); // Pausa para renderizado
+        await new Promise(resolve => setTimeout(resolve, 100));
 
         const elementoEstado = document.getElementById('estado-canvas');
         const canvas = await html2canvas(elementoEstado, { backgroundColor: '#050505', scale: 2 });
@@ -911,7 +929,6 @@ async function compartirEstadoCuenta() {
         alert("Error al generar la imagen de estado: " + err.message);
     }
 }
-// ==== FIN NUEVA FUNCIÓN ====
 
 function prepararAlertaManual() {
     if(!conductorSeleccionadoActual) return;
@@ -949,7 +966,6 @@ async function activarAlerta(e) {
             choferNombre: conductorSeleccionadoActual.nombre,
             motivo: document.getElementById('alerta-motivo').value,
             color: document.getElementById('alerta-color').value,
-            // AQUI ESTÁ LA SOLUCIÓN DEL ESPACIO EN BLANCO: Se le agrega .trim()
             tiempoFalso: document.getElementById('alerta-tiempo-falso').value.trim(),
             duracionMs: minutos * 60 * 1000,
             expiresAt: Date.now() + (minutos * 60 * 1000),
@@ -986,16 +1002,18 @@ function escucharAlertasChofer(id) {
 
             document.getElementById('finanzas-deuda-monto').innerText = `$${deudaActual.toFixed(2)}`;
             
+            // SOLUCION ESTADO DE CUENTA: Desglose claro para el chofer
             let desglose = "";
             if (deudaActual <= 0) {
-                desglose = "<span style='color:var(--success)'>Paz y Salvo</span>";
+                desglose = "<div style='color:var(--success); font-weight:bold;'><i class='fa-solid fa-check-circle'></i> Cuenta al día (Paz y Salvo)</div>";
             } else {
-                if(deudaHoy > 0) desglose += `<span style='color:var(--success); margin-right:10px;'>Hoy: $${deudaHoy.toFixed(2)}</span>`;
-                if(deudaAtraso > 0) desglose += `<span style='color:var(--red)'>Atraso: $${deudaAtraso.toFixed(2)}</span>`;
+                if(deudaHoy > 0) desglose += `<div style='color:var(--info); margin-bottom:8px; font-weight:bold;'>CUOTA DE HOY (Vence 11:59 PM): <span style='color:white;'>$${deudaHoy.toFixed(2)}</span></div>`;
+                if(deudaAtraso > 0) desglose += `<div style='color:var(--red); font-weight:bold;'>SALDO VENCIDO (Atraso): <span style='color:white;'>$${deudaAtraso.toFixed(2)}</span></div>`;
             }
             document.getElementById('finanzas-desglose').innerHTML = desglose;
         }
     });
+
     db.collection('alertas_temporizador').doc(id).onSnapshot(doc => {
         const cA = document.getElementById('chofer-box-alerta');
         if (!doc.exists || !doc.data().activo) {
@@ -1004,6 +1022,7 @@ function escucharAlertasChofer(id) {
             document.getElementById('chofer-titulo-estado').innerText = "SISTEMA ACTIVO";
             document.getElementById('chofer-motivo').innerText = "Vehículo autorizado para operaciones. Todo en orden.";
             document.getElementById('timer-display').innerText = "00:00:00";
+            document.getElementById('timer-display').style.color = "white";
             return;
         }
         const data = doc.data();
@@ -1013,16 +1032,23 @@ function escucharAlertasChofer(id) {
         document.getElementById('chofer-titulo-estado').innerText = data.color === 'red' ? "⚠️ RESTRICCIÓN DE UNIDAD" : "🚨 NOTIFICACIÓN DE PAGO";
         document.getElementById('chofer-motivo').innerText = data.motivo;
         
-        // AQUI ESTÁ LA SOLUCIÓN DEL CRONÓMETRO: Se asegura que si hay puros espacios vacíos, inicie el contador real
+        // SOLUCION CRONOMETRO: Asegurando que la caja se actualice correctamente
         if (data.tiempoFalso && data.tiempoFalso.trim() !== "") {
             clearInterval(timerInterval);
             document.getElementById('timer-display').innerText = data.tiempoFalso;
-        } else {
+            document.getElementById('timer-display').style.color = "white";
+        } else if (data.expiresAt) {
             clearInterval(timerInterval);
             timerInterval = setInterval(() => {
                 const res = data.expiresAt - Date.now();
-                if(res <= 0) { document.getElementById('timer-display').innerText = "00:00:00"; clearInterval(timerInterval); }
-                else { document.getElementById('timer-display').innerText = new Date(res).toISOString().substr(11, 8); }
+                if (res <= 0) { 
+                    document.getElementById('timer-display').innerText = "BLOQUEADO"; 
+                    document.getElementById('timer-display').style.color = "var(--red)";
+                    clearInterval(timerInterval); 
+                } else { 
+                    document.getElementById('timer-display').style.color = "white";
+                    document.getElementById('timer-display').innerText = new Date(res).toISOString().substr(11, 8); 
+                }
             }, 1000);
         }
     });

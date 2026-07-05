@@ -170,7 +170,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
             <div style="background: #050505; padding: 15px; border-radius: 10px; border: 1px solid #222;">
                 <div id="desglose-deuda-panel" style="margin-bottom: 15px; background: #111; padding: 15px; border-radius: 8px; border-left: 4px solid var(--gold);">
-                    </div>
+                </div>
 
                 <form onsubmit="registrarPagoHistorial(event)" style="border-top: 1px dashed #333; padding-top: 15px;">
                     <h4 style="font-size: 0.85rem; color: var(--gold); margin-bottom: 10px;">REGISTRAR PAGO O ADELANTO</h4>
@@ -218,8 +218,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
         </div>
 
         <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <button class="btn btn-orange" style="width: auto; flex: 1; padding: 10px;" onclick="prepararAlertaManual()"><i class="fa-solid fa-bolt"></i> CRONÓMETRO MANUAL</button>
-            <button class="btn btn-blue" style="width: auto; flex: 1; padding: 10px;" onclick="copiarLinkConductor()"><i class="fa-solid fa-link"></i> COPIAR LINK CHOFER</button>
+            <button class="btn btn-green" style="width: auto; flex: 1; padding: 10px;" onclick="compartirEstadoCuenta()"><i class="fa-brands fa-whatsapp"></i> ENVIAR ESTADO</button>
+            <button class="btn btn-orange" style="width: auto; flex: 1; padding: 10px;" onclick="prepararAlertaManual()"><i class="fa-solid fa-bolt"></i> CRONÓMETRO</button>
+            <button class="btn btn-blue" style="width: auto; flex: 1; padding: 10px;" onclick="copiarLinkConductor()"><i class="fa-solid fa-link"></i> COPIAR LINK</button>
         </div>
     </div>
 </div>
@@ -307,6 +308,20 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
         <p style="color: #aaa; font-size: 0.8rem; text-transform: uppercase;">Nuevo Saldo Pendiente</p>
         <h2 style="font-family: 'Orbitron'; margin-top: 5px;" id="recibo-saldo">$0.00</h2>
         <p id="recibo-estado" style="font-size: 0.75rem; margin-top: 5px; font-weight: bold;"></p>
+    </div>
+    <p style="font-size: 0.7rem; color: #555; margin-top: 15px; font-family: 'Orbitron';">MASTER MOBILITY OS</p>
+</div>
+
+<div id="estado-canvas" style="position: absolute; left: -9999px; width: 350px; background: #050505; color: white; padding: 25px; border: 2px solid var(--info); border-radius: 15px; font-family: 'Inter', sans-serif; text-align: center;">
+    <h2 style="font-family: 'Orbitron'; color: var(--info); margin-bottom: 5px;"><i class="fa-solid fa-wallet"></i> ESTADO GENERAL</h2>
+    <h3 id="estado-nombre" style="color: var(--gold); margin-bottom: 5px;">Nombre Conductor</h3>
+    <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;" id="estado-fecha">Fecha Actual</p>
+    <div style="background: #111; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <p style="color: #aaa; font-size: 0.8rem; text-transform: uppercase;">Saldo Pendiente Total</p>
+        <h1 style="font-size: 2.8rem; margin: 5px 0; color: white;" id="estado-saldo">$0.00</h1>
+    </div>
+    <div style="border-top: 1px dashed #333; padding-top: 15px;">
+        <p id="estado-mensaje" style="font-size: 0.85rem; font-weight: bold; padding: 5px; border-radius: 8px;"></p>
     </div>
     <p style="font-size: 0.7rem; color: #555; margin-top: 15px; font-family: 'Orbitron';">MASTER MOBILITY OS</p>
 </div>
@@ -745,7 +760,6 @@ function cargarHistorialPagos(choferId, tableBodyId, isChoferView) {
     if(!isChoferView) unsubscribeHistorialAdmin = unsubs;
 }
 
-// ==== AQUÍ ESTÁ LA NUEVA FUNCIÓN CON LA LÓGICA Y EL WEB SHARE API ====
 async function compartirRecibo(fechaPago, monto, metodo) {
     if(!conductorSeleccionadoActual || !conductorSeleccionadoActual.telefono) {
         alert("El conductor no tiene un número de teléfono registrado.");
@@ -759,26 +773,24 @@ async function compartirRecibo(fechaPago, monto, metodo) {
     const cuotaFija = parseFloat(c.cuota_fija) || 25;
     const linkDriver = `${window.location.origin}${window.location.pathname}?driver=${c.id}`;
 
-    // Lógica mejorada del estado de cuenta según tus instrucciones
     let colorEstado = "#00ff88";
     let textoEstado = "";
     let mensajeEstado = "";
     
     if (deudaActual === 0) {
-        colorEstado = "#00ff88"; // Verde
+        colorEstado = "#00ff88"; 
         textoEstado = "🟢 ESTADO DE CUENTA AL DÍA";
         mensajeEstado = "🟢 No hay saldo pendiente. Estado de cuenta al día.";
-    } else if (deudaActual <= cuotaFija) { // Debe solo lo de hoy (ej. $25)
-        colorEstado = "#3b82f6"; // Azul para la cuota del día
+    } else if (deudaActual <= cuotaFija) { 
+        colorEstado = "#3b82f6"; 
         textoEstado = `🔵 CUENTA CORRIENTE AL DÍA`;
         mensajeEstado = `🔵 Saldo pendiente $${deudaActual.toFixed(2)} del día de hoy. Estado de cuenta corriente al día.`;
-    } else { // Debe más de 1 día (> $25)
-        colorEstado = "#d32f2f"; // Rojo
+    } else { 
+        colorEstado = "#d32f2f"; 
         textoEstado = `🔴 ATRASADO (Debe $${deudaActual.toFixed(2)})`;
         mensajeEstado = `🔴 ADVERTENCIA: Saldo pendiente $${deudaActual.toFixed(2)}. Tiene días atrasados.`;
     }
 
-    // Actualizamos el recibo visual (Canvas)
     document.getElementById('recibo-nombre').innerText = c.nombre;
     document.getElementById('recibo-fecha').innerText = `Pago correspondiente a: ${fechaPago}`;
     document.getElementById('recibo-monto').innerText = `$${monto.toFixed(2)}`;
@@ -791,32 +803,27 @@ async function compartirRecibo(fechaPago, monto, metodo) {
     const textoMensaje = `🚗 *COMPROBANTE DE PAGO*\n\nHola ${c.nombre},\nHemos registrado tu pago de manera exitosa.\n\n*Fecha del abono:* ${fechaPago}\n*Monto Pagado:* $${monto.toFixed(2)}\n\n*Estado Actual:* ${mensajeEstado}\n\n🔗 *Revisa tu estado de cuenta aquí:*\n${linkDriver}\n\nGracias,\nMaster Mobility.`;
 
     try {
-        // Breve pausa para asegurar que el HTML se actualice visualmente antes de la foto
         await new Promise(resolve => setTimeout(resolve, 100));
 
         const elementoRecibo = document.getElementById('recibo-canvas');
         const canvas = await html2canvas(elementoRecibo, { backgroundColor: '#050505', scale: 2 });
         
-        // 1. Convertir la imagen a un archivo real que el sistema del celular entienda
         const imagenDataUrl = canvas.toDataURL("image/png");
         const respuesta = await fetch(imagenDataUrl);
         const blob = await respuesta.blob();
         const archivoImagen = new File([blob], "estado_cuenta.png", { type: "image/png" });
 
-        // 2. Intentar usar el menú nativo de Compartir del celular (Web Share API)
         if (navigator.canShare && navigator.canShare({ files: [archivoImagen] })) {
             try {
                 await navigator.share({
                     title: 'Comprobante de Pago',
                     text: textoMensaje,
-                    files: [archivoImagen] // Aquí se adjunta la foto
+                    files: [archivoImagen] 
                 });
-                console.log("Recibo compartido con éxito.");
             } catch (error) {
                 console.log("Envío cancelado o fallido:", error);
             }
         } else {
-            // Alternativa por si lo abres en Computadora (no soporta enviar imágenes por link)
             alert("Tu dispositivo no soporta enviar la imagen automáticamente. Se abrirá WhatsApp enviando solo el texto.");
             const urlWa = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(textoMensaje)}`;
             window.open(urlWa, '_blank');
@@ -825,7 +832,86 @@ async function compartirRecibo(fechaPago, monto, metodo) {
         alert("Error al generar el recibo: " + err.message);
     }
 }
-// ==== FIN DE LA NUEVA FUNCIÓN ====
+
+// ==== NUEVA FUNCIÓN: COMPARTIR ESTADO DE CUENTA GLOBAL ====
+async function compartirEstadoCuenta() {
+    if(!conductorSeleccionadoActual || !conductorSeleccionadoActual.telefono) {
+        alert("El conductor no tiene un número de teléfono registrado.");
+        return;
+    }
+
+    const c = conductorSeleccionadoActual;
+    const telefono = c.telefono;
+    const cleanPhone = telefono.replace(/\D/g, '');
+    const deudaActual = parseFloat(c.deuda) || 0;
+    const cuotaFija = parseFloat(c.cuota_fija) || 25;
+    const linkDriver = `${window.location.origin}${window.location.pathname}?driver=${c.id}`;
+    
+    // Obtener fecha local de Panamá
+    const fechaHoy = new Date().toLocaleDateString('es-PA', { timeZone: 'America/Panama' });
+
+    let colorEstado = "#00ff88";
+    let textoEstado = "";
+    let mensajeWa = "";
+
+    if (deudaActual <= 0) {
+        colorEstado = "var(--success)";
+        textoEstado = "🟢 AL DÍA (PAZ Y SALVO)";
+        mensajeWa = "🟢 Tu cuenta está en Paz y Salvo. ¡Gracias por mantener tu cuenta al día!";
+        document.getElementById('estado-mensaje').style.background = "rgba(0,255,136,0.1)";
+    } else if (deudaActual <= cuotaFija) {
+        colorEstado = "var(--info)";
+        textoEstado = `🔵 SALDO CORRIENTE: $${deudaActual.toFixed(2)}`;
+        mensajeWa = `🔵 Tienes un saldo corriente de $${deudaActual.toFixed(2)} correspondiente al día. Tu cuenta no está atrasada.`;
+        document.getElementById('estado-mensaje').style.background = "rgba(13,202,240,0.1)";
+    } else {
+        colorEstado = "var(--red)";
+        textoEstado = `🔴 ATRASADO: $${deudaActual.toFixed(2)}`;
+        mensajeWa = `🔴 ADVERTENCIA: Presentas un saldo atrasado total de $${deudaActual.toFixed(2)}. Por favor, realiza tu abono lo antes posible para evitar bloqueos.`;
+        document.getElementById('estado-mensaje').style.background = "rgba(211,47,47,0.1)";
+    }
+
+    // Llenar el nuevo Canvas
+    document.getElementById('estado-nombre').innerText = c.nombre;
+    document.getElementById('estado-fecha').innerText = `Corte del sistema al: ${fechaHoy}`;
+    document.getElementById('estado-saldo').innerText = `$${deudaActual.toFixed(2)}`;
+    document.getElementById('estado-saldo').style.color = colorEstado;
+    document.getElementById('estado-mensaje').innerText = textoEstado;
+    document.getElementById('estado-mensaje').style.color = colorEstado;
+
+    const textoMensaje = `📊 *REPORTE DE ESTADO DE CUENTA*\n\nHola ${c.nombre},\nEste es un resumen de tu saldo actual en la plataforma:\n\n*${mensajeWa}*\n\n🔗 *Puedes verificar el detalle de tus movimientos y el tiempo restante de tu unidad en este link único:*\n${linkDriver}\n\nAtte,\nMaster Mobility.`;
+
+    try {
+        await new Promise(resolve => setTimeout(resolve, 100)); // Pausa para renderizado
+
+        const elementoEstado = document.getElementById('estado-canvas');
+        const canvas = await html2canvas(elementoEstado, { backgroundColor: '#050505', scale: 2 });
+        
+        const imagenDataUrl = canvas.toDataURL("image/png");
+        const respuesta = await fetch(imagenDataUrl);
+        const blob = await respuesta.blob();
+        const archivoImagen = new File([blob], "resumen_cuenta.png", { type: "image/png" });
+
+        if (navigator.canShare && navigator.canShare({ files: [archivoImagen] })) {
+            try {
+                await navigator.share({
+                    title: 'Estado de Cuenta Global',
+                    text: textoMensaje,
+                    files: [archivoImagen]
+                });
+            } catch (error) {
+                console.log("Envío cancelado o fallido:", error);
+            }
+        } else {
+            alert("Tu dispositivo no soporta adjuntar la imagen directo por link. Se abrirá WhatsApp enviando el detalle por texto.");
+            const urlWa = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(textoMensaje)}`;
+            window.open(urlWa, '_blank');
+        }
+    } catch (err) {
+        alert("Error al generar la imagen de estado: " + err.message);
+    }
+}
+// ==== FIN NUEVA FUNCIÓN ====
 
 function prepararAlertaManual() {
     if(!conductorSeleccionadoActual) return;
@@ -863,7 +949,8 @@ async function activarAlerta(e) {
             choferNombre: conductorSeleccionadoActual.nombre,
             motivo: document.getElementById('alerta-motivo').value,
             color: document.getElementById('alerta-color').value,
-            tiempoFalso: document.getElementById('alerta-tiempo-falso').value,
+            // AQUI ESTÁ LA SOLUCIÓN DEL ESPACIO EN BLANCO: Se le agrega .trim()
+            tiempoFalso: document.getElementById('alerta-tiempo-falso').value.trim(),
             duracionMs: minutos * 60 * 1000,
             expiresAt: Date.now() + (minutos * 60 * 1000),
             estado: 'corriendo', 
@@ -926,7 +1013,8 @@ function escucharAlertasChofer(id) {
         document.getElementById('chofer-titulo-estado').innerText = data.color === 'red' ? "⚠️ RESTRICCIÓN DE UNIDAD" : "🚨 NOTIFICACIÓN DE PAGO";
         document.getElementById('chofer-motivo').innerText = data.motivo;
         
-        if (data.tiempoFalso) {
+        // AQUI ESTÁ LA SOLUCIÓN DEL CRONÓMETRO: Se asegura que si hay puros espacios vacíos, inicie el contador real
+        if (data.tiempoFalso && data.tiempoFalso.trim() !== "") {
             clearInterval(timerInterval);
             document.getElementById('timer-display').innerText = data.tiempoFalso;
         } else {
@@ -942,4 +1030,3 @@ function escucharAlertasChofer(id) {
 </script>
 </body>
 </html>
-

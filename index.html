@@ -471,7 +471,6 @@ async function guardarConductor(e) {
             await db.collection('conductores').doc(id).update(datosChofer);
             alert("Perfil actualizado.");
         } else {
-            // SOLUCION COBRO DUPLICADO: Se inicializa la fecha para evitar bugs en la primera corrida
             datosChofer.ultima_fecha_cobro = ""; 
             await db.collection('conductores').add(datosChofer);
             alert("Conductor nuevo registrado.");
@@ -482,7 +481,6 @@ async function guardarConductor(e) {
     } catch(err) { alert("Error: " + err.message); }
 }
 
-// SOLUCION COBRO DUPLICADO: Esta función ahora escribe la fecha por conductor de forma individual (Idempotencia)
 async function procesarCargaDiariaAutomatica() {
     const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Panama' });
     const fechaPanama = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Panama"}));
@@ -497,9 +495,7 @@ async function procesarCargaDiariaAutomatica() {
             const choferData = docChofer.data();
             const diasLibres = choferData.dias_libres || [];
             
-            // Solo evaluar si este conductor específico no ha sido procesado hoy
             if (choferData.ultima_fecha_cobro !== hoy) {
-                
                 if (!diasLibres.includes(diaSemana)) {
                     const pagosHoy = await db.collection('pagos_historial')
                         .where('choferId', '==', docChofer.id)
@@ -514,11 +510,9 @@ async function procesarCargaDiariaAutomatica() {
                             ultima_fecha_cobro: hoy 
                         });
                     } else {
-                        // Si pagó, solo le actualizamos la fecha
                         batch.update(docChofer.ref, { ultima_fecha_cobro: hoy });
                     }
                 } else {
-                    // Si es día libre, marcamos el día como procesado sin sumar deuda
                     batch.update(docChofer.ref, { ultima_fecha_cobro: hoy });
                 }
                 actualizados++;
@@ -642,7 +636,6 @@ function actualizarPanelDesglose(chofer) {
                 <div style="font-size: 2rem; font-weight: bold; font-family: 'Orbitron'; margin-bottom:10px;">$${deudaTotal.toFixed(2)}</div>
                 <div style="display:flex; flex-direction:column; gap:5px; border-top: 1px dashed #333; padding-top:10px; font-size:0.9rem;">`;
     
-    // SOLUCION ESTADO DE CUENTA: Desglose claro para el administrador
     if (deudaTotal <= 0) {
         html += `<div style="color: var(--success); font-weight:bold;"><i class="fa-solid fa-check-circle"></i> Conductor Paz y Salvo</div>`;
     } else {
@@ -705,8 +698,19 @@ async function registrarPagoHistorial(e) {
         
         const deudaRestante = Math.max(0, (parseFloat(conductorSeleccionadoActual.deuda) || 0) - monto);
         await db.collection('conductores').doc(id).update({ deuda: deudaRestante });
-
+        
         const cuotaFija = parseFloat(conductorSeleccionadoActual.cuota_fija) || 25;
+        
+        // MODIFICACIÓN: Apagado automático del cronómetro si el pago cubre la deuda o la deja en <= a su cuota
+        if (deudaRestante <= cuotaFija) {
+            try {
+                await db.collection('alertas_temporizador').doc(id).delete();
+                console.log("Alerta removida automáticamente debido al pago.");
+            } catch (err) {
+                console.error("No había alerta para remover:", err);
+            }
+        }
+
         document.getElementById('nuevo-pago-monto').value = cuotaFija.toFixed(2);
         document.getElementById('nuevo-pago-desc').value = 'Pago Regular';
         setearFechaRapida(0);
@@ -1002,7 +1006,6 @@ function escucharAlertasChofer(id) {
 
             document.getElementById('finanzas-deuda-monto').innerText = `$${deudaActual.toFixed(2)}`;
             
-            // SOLUCION ESTADO DE CUENTA: Desglose claro para el chofer
             let desglose = "";
             if (deudaActual <= 0) {
                 desglose = "<div style='color:var(--success); font-weight:bold;'><i class='fa-solid fa-check-circle'></i> Cuenta al día (Paz y Salvo)</div>";
@@ -1032,7 +1035,6 @@ function escucharAlertasChofer(id) {
         document.getElementById('chofer-titulo-estado').innerText = data.color === 'red' ? "⚠️ RESTRICCIÓN DE UNIDAD" : "🚨 NOTIFICACIÓN DE PAGO";
         document.getElementById('chofer-motivo').innerText = data.motivo;
         
-        // SOLUCION CRONOMETRO: Asegurando que la caja se actualice correctamente
         if (data.tiempoFalso && data.tiempoFalso.trim() !== "") {
             clearInterval(timerInterval);
             document.getElementById('timer-display').innerText = data.tiempoFalso;
@@ -1046,8 +1048,19 @@ function escucharAlertasChofer(id) {
                     document.getElementById('timer-display').style.color = "var(--red)";
                     clearInterval(timerInterval); 
                 } else { 
+                    // MODIFICACIÓN: Cálculo matemático directo de horas, minutos y segundos para evitar que se rompa al pasar las 24 hrs.
+                    let totalSeconds = Math.floor(res / 1000);
+                    let hours = Math.floor(totalSeconds / 3600);
+                    let minutes = Math.floor((totalSeconds % 3600) / 60);
+                    let seconds = totalSeconds % 60;
+                    
+                    let formattedTime = 
+                        String(hours).padStart(2, '0') + ':' + 
+                        String(minutes).padStart(2, '0') + ':' + 
+                        String(seconds).padStart(2, '0');
+                        
                     document.getElementById('timer-display').style.color = "white";
-                    document.getElementById('timer-display').innerText = new Date(res).toISOString().substr(11, 8); 
+                    document.getElementById('timer-display').innerText = formattedTime; 
                 }
             }, 1000);
         }

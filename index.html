@@ -15,7 +15,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
 body { background: var(--dark); color: white; overflow-x: hidden; padding-bottom: 50px; }
 
-header { background: rgba(0,0,0,0.95); padding: 15px 25px; border-bottom: 2px solid var(--gold); display: flex; justify-content: space-between; align-items: center; height: 70px; box-shadow: 0 5px 15px rgba(0,0,0,0.8); }
+header { background: rgba(0,0,0,0.95); padding: 15px 25px; border-bottom: 2px solid var(--gold); display: flex; justify-content: space-between; align-items: center; min-height: 70px; box-shadow: 0 5px 15px rgba(0,0,0,0.8); flex-wrap: wrap; gap: 10px; }
 .container { padding: 25px 15px; max-width: 1200px; margin: auto; }
 
 .form-panel { background: var(--card); padding: 25px; border-radius: 20px; border: 1px solid #222; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
@@ -40,6 +40,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 .driver-card:hover { border-color: var(--gold); }
 .badge { padding: 4px 8px; border-radius: 5px; font-size: 0.65rem; font-weight: bold; font-family: 'Orbitron'; display: inline-block; margin-top: 5px; position: absolute; top: 10px; right: 10px; }
 .bg-run { background: var(--orange); color: white; }
+.bg-vencido { background: var(--red); color: white; }
 
 .history-table { width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; }
 .history-table th { font-family: 'Orbitron'; font-size: 0.75rem; color: var(--blue); padding: 10px; border-bottom: 2px solid #222; text-transform: uppercase; }
@@ -57,9 +58,15 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 /* Botones de fecha rápida */
 .quick-date-container { display: flex; gap: 8px; margin-bottom: 10px; }
 .quick-date-btn { flex: 1; padding: 8px 5px; font-size: 0.7rem; border-radius: 5px; border: none; font-family: 'Orbitron'; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+
+/* Notificacion Flotante Admin */
+#notificacion-flotante { position: fixed; bottom: 20px; right: 20px; background: var(--red); color: white; padding: 15px 25px; border-radius: 10px; font-family: 'Orbitron'; font-weight: bold; z-index: 10000; box-shadow: 0 5px 20px rgba(0,0,0,0.8); display: none; animation: slideIn 0.5s ease-out; border: 2px solid white; }
+@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
 </style>
 </head>
 <body>
+
+<div id="notificacion-flotante"></div>
 
 <div id="modal-pass-chofer" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center;">
     <div class="form-panel" style="width: 90%; max-width: 350px; text-align: center; border: 2px solid var(--red); margin-bottom: 0;">
@@ -76,14 +83,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 <div id="panel-admin" style="display: none;">
     <header>
         <div style="font-family:'Orbitron'; color:var(--gold); font-size:1.2rem;">MASTER MOBILITY</div>
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <button id="btn-cobro-auto" class="btn btn-blue" style="width:auto; padding:5px 15px; font-size:0.8rem;" onclick="toggleCobroAuto()"><i class="fa-solid fa-robot"></i> COBRO: ON</button>
             <button class="btn btn-gold" style="width:auto; padding:5px 15px; font-size:0.8rem;" onclick="toggleFormConductor()"><i class="fa-solid fa-plus"></i> CHOFER</button>
             <button id="btn-seguridad" class="btn btn-green" style="width:auto; padding:5px 15px; font-size:0.8rem;" onclick="toggleSeguridad()"><i class="fa-solid fa-unlock"></i> CLAVE OFF</button>
         </div>
     </header>
     
     <div class="container">
-        
         <div id="dashboard-atrasados" class="dashboard-box" style="display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h3 style="font-family:'Orbitron'; color:var(--red); font-size: 1rem;"><i class="fa-solid fa-triangle-exclamation"></i> DEUDAS ATRASADAS</h3>
@@ -97,7 +104,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
             <input type="text" id="buscador-input" placeholder="Buscar por nombre o placa..." onkeyup="filtrarListaConductores()">
             <div id="lista-busqueda-resultados" class="grid-layout" style="margin-top: 15px; max-height: 500px; overflow-y: auto;"></div>
         </div>
-
     </div>
 </div>
 
@@ -169,12 +175,16 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
             <div style="background: #050505; padding: 15px; border-radius: 10px; border: 1px solid #222;">
-                <div id="desglose-deuda-panel" style="margin-bottom: 15px; background: #111; padding: 15px; border-radius: 8px; border-left: 4px solid var(--gold);">
+                <div id="desglose-deuda-panel" style="margin-bottom: 15px; background: #111; padding: 15px; border-radius: 8px; border-left: 4px solid var(--gold);"></div>
+                
+                <div id="admin-timer-display" style="display:none; background:rgba(255,107,0,0.1); border:1px solid var(--orange); padding:10px; border-radius:10px; margin-bottom:15px; text-align:center;">
+                    <p style="color:var(--orange); font-family:'Orbitron'; font-size:0.8rem; margin-bottom:5px;"><i class="fa-solid fa-clock"></i> TIEMPO RESTANTE EN PANTALLA</p>
+                    <h2 id="admin-reloj" style="font-family:'Orbitron'; color:white; font-size: 1.8rem;">00:00:00</h2>
+                    <p id="admin-alerta-estado" style="font-size: 0.75rem; color: #aaa; margin-top: 5px;"></p>
                 </div>
 
                 <form onsubmit="registrarPagoHistorial(event)" style="border-top: 1px dashed #333; padding-top: 15px;">
                     <h4 style="font-size: 0.85rem; color: var(--gold); margin-bottom: 10px;">REGISTRAR PAGO O ADELANTO</h4>
-                    
                     <div class="input-group">
                         <label>Día correspondiente al pago</label>
                         <div class="quick-date-container">
@@ -184,7 +194,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
                         </div>
                         <input type="date" id="nuevo-pago-fecha" required>
                     </div>
-                    
                     <div class="grid-layout">
                         <div class="input-group">
                             <label>Método de Pago</label>
@@ -200,7 +209,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
                             <input type="number" id="nuevo-pago-monto" step="0.01" required>
                         </div>
                     </div>
-
                     <div class="input-group">
                         <input type="text" id="nuevo-pago-desc" placeholder="Detalle (Opcional)" value="Pago Regular">
                     </div>
@@ -231,7 +239,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
         <form id="form-alerta" onsubmit="activarAlerta(event)">
             <input type="hidden" id="select-chofer">
             <div class="input-group">
-                <label>Tiempo Falso en Pantalla</label>
+                <label>Tiempo Falso en Pantalla (Opcional)</label>
                 <input type="text" id="alerta-tiempo-falso" placeholder="Ej: 12 Horas Restantes">
             </div>
             <div style="display: flex; gap: 15px;">
@@ -297,12 +305,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 
 <div id="recibo-canvas" style="position: absolute; left: -9999px; width: 350px; background: #050505; color: white; padding: 25px; border: 2px solid var(--gold); border-radius: 15px; font-family: 'Inter', sans-serif; text-align: center;">
     <h2 style="font-family: 'Orbitron'; color: var(--success); margin-bottom: 5px;">PAGO RECIBIDO</h2>
-    <h3 id="recibo-nombre" style="color: var(--gold); margin-bottom: 5px;">Nombre Conductor</h3>
-    <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;" id="recibo-fecha">Fecha y Hora</p>
+    <h3 id="recibo-nombre" style="color: var(--gold); margin-bottom: 5px;">Nombre</h3>
+    <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;" id="recibo-fecha">Fecha</p>
     <div style="background: #111; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
         <p style="color: #aaa; font-size: 0.8rem; text-transform: uppercase;">Monto Pagado</p>
         <h1 style="font-size: 2.8rem; margin: 5px 0; color: white;" id="recibo-monto">$0.00</h1>
-        <p style="color: var(--info); font-weight: bold;" id="recibo-metodo">Método de Pago</p>
+        <p style="color: var(--info); font-weight: bold;" id="recibo-metodo">Método</p>
     </div>
     <div style="border-top: 1px dashed #333; padding-top: 15px;">
         <p style="color: #aaa; font-size: 0.8rem; text-transform: uppercase;">Nuevo Saldo Pendiente</p>
@@ -314,7 +322,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); outline: 
 
 <div id="estado-canvas" style="position: absolute; left: -9999px; width: 350px; background: #050505; color: white; padding: 25px; border: 2px solid var(--info); border-radius: 15px; font-family: 'Inter', sans-serif; text-align: center;">
     <h2 style="font-family: 'Orbitron'; color: var(--info); margin-bottom: 5px;"><i class="fa-solid fa-wallet"></i> ESTADO GENERAL</h2>
-    <h3 id="estado-nombre" style="color: var(--gold); margin-bottom: 5px;">Nombre Conductor</h3>
+    <h3 id="estado-nombre" style="color: var(--gold); margin-bottom: 5px;">Nombre</h3>
     <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;" id="estado-fecha">Fecha Actual</p>
     <div style="background: #111; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
         <p style="color: #aaa; font-size: 0.8rem; text-transform: uppercase;">Saldo Pendiente Total</p>
@@ -345,8 +353,27 @@ let timerInterval = null;
 let unsubscribeHistorialAdmin = null;
 let conductorSeleccionadoActual = null;
 let choferPendienteModal = null; 
-
 let seguridadGlobal = false; 
+let cobroAutoActivo = true; 
+let adminTickInterval = null; 
+
+function solicitarPermisoNotificaciones() {
+    if ("Notification" in window) {
+        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+    }
+}
+
+function mostrarNotificacion(titulo, cuerpo) {
+    if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(titulo, { body: cuerpo, icon: 'https://cdn-icons-png.flaticon.com/512/564/564276.png' });
+    }
+    const flotante = document.getElementById('notificacion-flotante');
+    flotante.innerHTML = `<i class="fa-solid fa-bell"></i> ${titulo}: ${cuerpo}`;
+    flotante.style.display = 'block';
+    setTimeout(() => { flotante.style.display = 'none'; }, 8000);
+}
 
 function toggleSeguridad() {
     seguridadGlobal = !seguridadGlobal;
@@ -357,6 +384,29 @@ function toggleSeguridad() {
     } else {
         btn.innerHTML = '<i class="fa-solid fa-unlock"></i> CLAVE OFF';
         btn.className = 'btn btn-green';
+    }
+}
+
+async function toggleCobroAuto() {
+    cobroAutoActivo = !cobroAutoActivo;
+    try {
+        await db.collection('configuracion').doc('sistema').set({ cobro_diario_activo: cobroAutoActivo }, { merge: true });
+    } catch (error) {
+        console.error("Error guardando config:", error);
+        actualizarBotonCobroAuto();
+    }
+}
+
+function actualizarBotonCobroAuto() {
+    const btn = document.getElementById('btn-cobro-auto');
+    if(btn) {
+        if(cobroAutoActivo) {
+            btn.innerHTML = '<i class="fa-solid fa-robot"></i> COBRO: ON';
+            btn.className = 'btn btn-blue';
+        } else {
+            btn.innerHTML = '<i class="fa-solid fa-hand"></i> COBRO: OFF';
+            btn.className = 'btn btn-orange';
+        }
     }
 }
 
@@ -376,9 +426,86 @@ window.addEventListener('DOMContentLoaded', () => {
         cargarHistorialPagos(choferUrlId, 'tabla-historial-chofer', true);
     } else {
         document.getElementById('panel-admin').style.display = 'block';
+        solicitarPermisoNotificaciones();
         conectarBaseDatosAdmin();
+        iniciarRelojAdmin();
     }
 });
+
+function iniciarRelojAdmin() {
+    if(adminTickInterval) clearInterval(adminTickInterval);
+    adminTickInterval = setInterval(() => {
+        const ahora = Date.now();
+        
+        for(let id in appData.alertas) {
+            let al = appData.alertas[id];
+            let choferExiste = appData.conductores.find(c => c.id === id);
+            
+            if(!choferExiste) {
+                db.collection('alertas_temporizador').doc(id).delete().catch(()=>{});
+                delete appData.alertas[id];
+                continue; 
+            }
+
+            if(al.activo && al.estado === 'corriendo') {
+                if(al.expiresAt && al.expiresAt <= ahora) {
+                    db.collection('alertas_temporizador').doc(id).update({ estado: 'vencido' });
+                    mostrarNotificacion("TIEMPO VENCIDO", `El cronómetro de ${al.choferNombre || 'un chofer'} ha llegado a cero.`);
+                    
+                    let spanDash = document.getElementById('dash-timer-' + id);
+                    if(spanDash) spanDash.innerHTML = "VENCIDO";
+                } else {
+                    let spanDash = document.getElementById('dash-timer-' + id);
+                    if(spanDash) {
+                        if(al.tiempoFalso && al.tiempoFalso.trim() !== "") {
+                            spanDash.innerText = al.tiempoFalso;
+                        } else if(al.expiresAt) {
+                            let res = al.expiresAt - ahora;
+                            let totalSeconds = Math.floor(res / 1000);
+                            let hours = Math.floor(totalSeconds / 3600);
+                            let minutes = Math.floor((totalSeconds % 3600) / 60);
+                            let seconds = totalSeconds % 60;
+                            spanDash.innerText = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+                        }
+                    }
+                }
+            }
+        }
+
+        if(conductorSeleccionadoActual) {
+            let al = appData.alertas[conductorSeleccionadoActual.id];
+            let divTimer = document.getElementById('admin-timer-display');
+            let displayReloj = document.getElementById('admin-reloj');
+            let estadoP = document.getElementById('admin-alerta-estado');
+            
+            if(al && al.activo) {
+                divTimer.style.display = 'block';
+                if(al.tiempoFalso && al.tiempoFalso.trim() !== "") {
+                    displayReloj.innerText = al.tiempoFalso;
+                    displayReloj.style.color = "white";
+                    estadoP.innerText = "Modo: Tiempo Fijo Falso";
+                } else if(al.expiresAt) {
+                    let res = al.expiresAt - ahora;
+                    if(res > 0) {
+                        let totalSeconds = Math.floor(res / 1000);
+                        let hours = Math.floor(totalSeconds / 3600);
+                        let minutes = Math.floor((totalSeconds % 3600) / 60);
+                        let seconds = totalSeconds % 60;
+                        displayReloj.innerText = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+                        displayReloj.style.color = "white";
+                        estadoP.innerText = "Modo: Cronómetro en marcha";
+                    } else {
+                        displayReloj.innerText = "VENCIDO";
+                        displayReloj.style.color = "var(--red)";
+                        estadoP.innerText = "El tiempo se ha agotado.";
+                    }
+                }
+            } else {
+                divTimer.style.display = 'none';
+            }
+        }
+    }, 1000);
+}
 
 function abrirGestionIndividual(id) {
     if (!seguridadGlobal) {
@@ -451,21 +578,13 @@ async function guardarConductor(e) {
     const placa = document.getElementById('add-placa').value.trim().toUpperCase();
     const saldo = parseFloat(document.getElementById('add-saldo').value) || 0;
     const cuota = parseFloat(document.getElementById('add-cuota').value) || 25;
-
     const diasLibres = Array.from(document.querySelectorAll('.check-dia:checked')).map(cb => parseInt(cb.value));
 
     try {
         const autoQuery = await db.collection('vehiculos').where('placa', '==', placa).get();
         if(autoQuery.empty) { await db.collection('vehiculos').add({ placa: placa, estado: "activo" }); }
 
-        const datosChofer = { 
-            nombre: nombre, 
-            telefono: telefono, 
-            auto_asignado: placa, 
-            deuda: saldo, 
-            cuota_fija: cuota, 
-            dias_libres: diasLibres 
-        };
+        const datosChofer = { nombre, telefono, auto_asignado: placa, deuda: saldo, cuota_fija: cuota, dias_libres: diasLibres };
 
         if (id) {
             await db.collection('conductores').doc(id).update(datosChofer);
@@ -505,10 +624,7 @@ async function procesarCargaDiariaAutomatica() {
                     if (pagosHoy.empty) {
                         const deudaActual = parseFloat(choferData.deuda) || 0;
                         const cuotaDiaria = parseFloat(choferData.cuota_fija) || 25;
-                        batch.update(docChofer.ref, { 
-                            deuda: deudaActual + cuotaDiaria,
-                            ultima_fecha_cobro: hoy 
-                        });
+                        batch.update(docChofer.ref, { deuda: deudaActual + cuotaDiaria, ultima_fecha_cobro: hoy });
                     } else {
                         batch.update(docChofer.ref, { ultima_fecha_cobro: hoy });
                     }
@@ -518,10 +634,7 @@ async function procesarCargaDiariaAutomatica() {
                 actualizados++;
             }
         }
-        
-        if (actualizados > 0) {
-            await batch.commit();
-        }
+        if (actualizados > 0) { await batch.commit(); }
     } catch (e) { console.error("Error automático:", e); }
 }
 
@@ -544,7 +657,6 @@ function actualizarDashboardAtrasos() {
     if (atrasados.length > 0) {
         dashboard.style.display = 'block';
         document.getElementById('total-deuda-calle').innerText = `$${totalDeudaAtrasada.toFixed(2)} (Atraso Extra)`;
-        
         listaHtml.innerHTML = '';
         atrasados.forEach(c => {
             listaHtml.innerHTML += `
@@ -558,7 +670,15 @@ function actualizarDashboardAtrasos() {
 }
 
 function conectarBaseDatosAdmin() {
-    procesarCargaDiariaAutomatica();
+    db.collection('configuracion').doc('sistema').onSnapshot(doc => {
+        if (doc.exists) {
+            cobroAutoActivo = doc.data().cobro_diario_activo !== false; 
+        } else {
+            cobroAutoActivo = true;
+        }
+        actualizarBotonCobroAuto();
+        if (cobroAutoActivo) { procesarCargaDiariaAutomatica(); }
+    });
 
     db.collection('vehiculos').onSnapshot(snap => {
         appData.vehiculos = []; snap.forEach(doc => appData.vehiculos.push({ id: doc.id, ...doc.data() })); filtrarListaConductores();
@@ -572,10 +692,7 @@ function conectarBaseDatosAdmin() {
         
         if(conductorSeleccionadoActual) {
             const c = appData.conductores.find(x => x.id === conductorSeleccionadoActual.id);
-            if(c) { 
-                conductorSeleccionadoActual = c; 
-                actualizarPanelDesglose(c);
-            }
+            if(c) { conductorSeleccionadoActual = c; actualizarPanelDesglose(c); }
         }
     });
 
@@ -598,7 +715,18 @@ function filtrarListaConductores() {
         const auto = appData.vehiculos.find(v => v.placa === c.auto_asignado);
         const alerta = appData.alertas[c.id];
         let alertBadge = '';
-        if(alerta && alerta.activo && alerta.estado === 'corriendo') alertBadge = '<span class="badge bg-run">ALERTA</span>';
+        let timerDashboardHtml = ''; 
+        
+        if(alerta && alerta.activo) {
+            if(alerta.estado === 'corriendo') {
+                alertBadge = '<span class="badge bg-run">ALERTA</span>';
+                timerDashboardHtml = `<div style="font-family:'Orbitron'; color:var(--orange); font-size:0.85rem; margin-top:8px; background:rgba(255,107,0,0.1); padding:4px 8px; border-radius:5px; display:inline-block; border:1px solid var(--orange);"><i class="fa-solid fa-clock"></i> <span id="dash-timer-${c.id}">Calculando...</span></div>`;
+            }
+            if(alerta.estado === 'vencido') {
+                alertBadge = '<span class="badge bg-vencido">VENCIDO</span>';
+                timerDashboardHtml = `<div style="font-family:'Orbitron'; color:var(--red); font-size:0.85rem; margin-top:8px; background:rgba(211,47,47,0.1); padding:4px 8px; border-radius:5px; display:inline-block; border:1px solid var(--red);"><i class="fa-solid fa-clock"></i> TIEMPO AGOTADO</div>`;
+            }
+        }
         
         let cuotaFija = parseFloat(c.cuota_fija) || 25;
         let deudaTotal = parseFloat(c.deuda) || 0;
@@ -621,6 +749,7 @@ function filtrarListaConductores() {
                 <div style="font-weight: bold; color: var(--gold); font-size:0.9rem;">${c.nombre}</div>
                 <div style="font-size: 0.75rem; color: #aaa; margin-top: 5px;"><i class="fa-solid fa-car"></i> ${auto ? auto.placa : 'Sin unidad'}</div>
                 ${desgloseHtml}
+                ${timerDashboardHtml}
             </div>
         `;
     });
@@ -688,11 +817,7 @@ async function registrarPagoHistorial(e) {
     const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true;
     try {
         await db.collection('pagos_historial').add({
-            choferId: id,
-            monto: monto,
-            descripcion: desc,
-            metodo_pago: metodo,
-            fecha_escogida: fechaInput, 
+            choferId: id, monto: monto, descripcion: desc, metodo_pago: metodo, fecha_escogida: fechaInput, 
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         
@@ -701,14 +826,10 @@ async function registrarPagoHistorial(e) {
         
         const cuotaFija = parseFloat(conductorSeleccionadoActual.cuota_fija) || 25;
         
-        // MODIFICACIÓN: Apagado automático del cronómetro si el pago cubre la deuda o la deja en <= a su cuota
         if (deudaRestante <= cuotaFija) {
             try {
                 await db.collection('alertas_temporizador').doc(id).delete();
-                console.log("Alerta removida automáticamente debido al pago.");
-            } catch (err) {
-                console.error("No había alerta para remover:", err);
-            }
+            } catch (err) { }
         }
 
         document.getElementById('nuevo-pago-monto').value = cuotaFija.toFixed(2);
@@ -720,16 +841,13 @@ async function registrarPagoHistorial(e) {
 
 async function borrarPago(idPago, monto) {
     if(!conductorSeleccionadoActual) return;
-    
-    if(confirm(`¿Estás seguro de que quieres anular este pago de $${monto}? Esto aumentará el saldo pendiente del conductor.`)) {
+    if(confirm(`¿Estás seguro de que quieres anular este pago de $${monto}? Esto aumentará el saldo pendiente.`)) {
         try {
             await db.collection('pagos_historial').doc(idPago).delete();
             const nuevaDeuda = (parseFloat(conductorSeleccionadoActual.deuda) || 0) + monto;
             await db.collection('conductores').doc(conductorSeleccionadoActual.id).update({ deuda: nuevaDeuda });
             alert("Pago anulado. El saldo se ha actualizado.");
-        } catch (error) {
-            alert("Error al anular pago: " + error.message);
-        }
+        } catch (error) { alert("Error al anular pago: " + error.message); }
     }
 }
 
@@ -742,7 +860,6 @@ function cargarHistorialPagos(choferId, tableBodyId, isChoferView) {
       .onSnapshot(snap => {
           let pagos = [];
           snap.forEach(doc => { pagos.push({ idDoc: doc.id, ...doc.data() }); });
-          
           pagos.sort((a, b) => {
               const timeA = a.timestamp ? a.timestamp.toMillis() : Date.now();
               const timeB = b.timestamp ? b.timestamp.toMillis() : Date.now();
@@ -760,16 +877,13 @@ function cargarHistorialPagos(choferId, tableBodyId, isChoferView) {
               const metodoMostrar = p.metodo_pago ? `[${p.metodo_pago}] ` : '';
               
               if(isChoferView) {
-                  tbody.innerHTML += `
-                    <tr>
+                  tbody.innerHTML += `<tr>
                         <td style="white-space:nowrap; font-size:0.75rem;">${fechaMostrar}</td>
                         <td style="font-size:0.75rem;"><span style="color:var(--info)">${metodoMostrar}</span>${p.descripcion}</td>
                         <td style="color:var(--success); font-weight:bold;">$${parseFloat(p.monto).toFixed(2)}</td>
-                    </tr>
-                  `;
+                    </tr>`;
               } else {
-                  tbody.innerHTML += `
-                    <tr>
+                  tbody.innerHTML += `<tr>
                         <td style="white-space:nowrap; font-size:0.75rem;">${fechaMostrar}</td>
                         <td style="font-size:0.75rem;"><span style="color:var(--info)">${metodoMostrar}</span><br>${p.descripcion}</td>
                         <td style="color:var(--success); font-weight:bold;">$${parseFloat(p.monto).toFixed(2)}</td>
@@ -777,161 +891,11 @@ function cargarHistorialPagos(choferId, tableBodyId, isChoferView) {
                             <button onclick="compartirRecibo('${p.fecha_escogida}', ${p.monto}, '${p.metodo_pago}')" class="btn btn-green btn-small" style="width: auto; margin-right: 5px; font-weight:bold;"><i class="fa-brands fa-whatsapp"></i> ENVIAR</button>
                             <button onclick="borrarPago('${p.idDoc}', ${p.monto})" class="btn btn-red btn-small" style="width: auto;"><i class="fa-solid fa-trash"></i></button>
                         </td>
-                    </tr>
-                  `;
+                    </tr>`;
               }
           });
       });
     if(!isChoferView) unsubscribeHistorialAdmin = unsubs;
-}
-
-async function compartirRecibo(fechaPago, monto, metodo) {
-    if(!conductorSeleccionadoActual || !conductorSeleccionadoActual.telefono) {
-        alert("El conductor no tiene un número de teléfono registrado.");
-        return;
-    }
-
-    const c = conductorSeleccionadoActual;
-    const telefono = c.telefono;
-    const cleanPhone = telefono.replace(/\D/g, '');
-    const deudaActual = parseFloat(c.deuda) || 0;
-    const cuotaFija = parseFloat(c.cuota_fija) || 25;
-    const linkDriver = `${window.location.origin}${window.location.pathname}?driver=${c.id}`;
-
-    let colorEstado = "#00ff88";
-    let textoEstado = "";
-    let mensajeEstado = "";
-    
-    if (deudaActual === 0) {
-        colorEstado = "#00ff88"; 
-        textoEstado = "🟢 ESTADO DE CUENTA AL DÍA";
-        mensajeEstado = "🟢 No hay saldo pendiente. Estado de cuenta al día.";
-    } else if (deudaActual <= cuotaFija) { 
-        colorEstado = "#3b82f6"; 
-        textoEstado = `🔵 CUENTA CORRIENTE AL DÍA`;
-        mensajeEstado = `🔵 Saldo pendiente $${deudaActual.toFixed(2)} del día de hoy. Estado de cuenta corriente al día.`;
-    } else { 
-        colorEstado = "#d32f2f"; 
-        textoEstado = `🔴 ATRASADO (Debe $${deudaActual.toFixed(2)})`;
-        mensajeEstado = `🔴 ADVERTENCIA: Saldo pendiente $${deudaActual.toFixed(2)}. Tiene días atrasados.`;
-    }
-
-    document.getElementById('recibo-nombre').innerText = c.nombre;
-    document.getElementById('recibo-fecha').innerText = `Pago correspondiente a: ${fechaPago}`;
-    document.getElementById('recibo-monto').innerText = `$${monto.toFixed(2)}`;
-    document.getElementById('recibo-metodo').innerText = metodo || "Efectivo";
-    document.getElementById('recibo-saldo').innerText = `$${deudaActual.toFixed(2)}`;
-    document.getElementById('recibo-saldo').style.color = (deudaActual > cuotaFija) ? "var(--red)" : "var(--success)";
-    document.getElementById('recibo-estado').innerText = textoEstado;
-    document.getElementById('recibo-estado').style.color = colorEstado;
-
-    const textoMensaje = `🚗 *COMPROBANTE DE PAGO*\n\nHola ${c.nombre},\nHemos registrado tu pago de manera exitosa.\n\n*Fecha del abono:* ${fechaPago}\n*Monto Pagado:* $${monto.toFixed(2)}\n\n*Estado Actual:* ${mensajeEstado}\n\n🔗 *Revisa tu estado de cuenta aquí:*\n${linkDriver}\n\nGracias,\nMaster Mobility.`;
-
-    try {
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        const elementoRecibo = document.getElementById('recibo-canvas');
-        const canvas = await html2canvas(elementoRecibo, { backgroundColor: '#050505', scale: 2 });
-        
-        const imagenDataUrl = canvas.toDataURL("image/png");
-        const respuesta = await fetch(imagenDataUrl);
-        const blob = await respuesta.blob();
-        const archivoImagen = new File([blob], "estado_cuenta.png", { type: "image/png" });
-
-        if (navigator.canShare && navigator.canShare({ files: [archivoImagen] })) {
-            try {
-                await navigator.share({
-                    title: 'Comprobante de Pago',
-                    text: textoMensaje,
-                    files: [archivoImagen] 
-                });
-            } catch (error) {
-                console.log("Envío cancelado o fallido:", error);
-            }
-        } else {
-            alert("Tu dispositivo no soporta enviar la imagen automáticamente. Se abrirá WhatsApp enviando solo el texto.");
-            const urlWa = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(textoMensaje)}`;
-            window.open(urlWa, '_blank');
-        }
-    } catch (err) {
-        alert("Error al generar el recibo: " + err.message);
-    }
-}
-
-async function compartirEstadoCuenta() {
-    if(!conductorSeleccionadoActual || !conductorSeleccionadoActual.telefono) {
-        alert("El conductor no tiene un número de teléfono registrado.");
-        return;
-    }
-
-    const c = conductorSeleccionadoActual;
-    const telefono = c.telefono;
-    const cleanPhone = telefono.replace(/\D/g, '');
-    const deudaActual = parseFloat(c.deuda) || 0;
-    const cuotaFija = parseFloat(c.cuota_fija) || 25;
-    const linkDriver = `${window.location.origin}${window.location.pathname}?driver=${c.id}`;
-    
-    const fechaHoy = new Date().toLocaleDateString('es-PA', { timeZone: 'America/Panama' });
-
-    let colorEstado = "#00ff88";
-    let textoEstado = "";
-    let mensajeWa = "";
-
-    if (deudaActual <= 0) {
-        colorEstado = "var(--success)";
-        textoEstado = "🟢 AL DÍA (PAZ Y SALVO)";
-        mensajeWa = "🟢 Tu cuenta está en Paz y Salvo. ¡Gracias por mantener tu cuenta al día!";
-        document.getElementById('estado-mensaje').style.background = "rgba(0,255,136,0.1)";
-    } else if (deudaActual <= cuotaFija) {
-        colorEstado = "var(--info)";
-        textoEstado = `🔵 SALDO CORRIENTE: $${deudaActual.toFixed(2)}`;
-        mensajeWa = `🔵 Tienes un saldo corriente de $${deudaActual.toFixed(2)} correspondiente al día. Tu cuenta no está atrasada.`;
-        document.getElementById('estado-mensaje').style.background = "rgba(13,202,240,0.1)";
-    } else {
-        colorEstado = "var(--red)";
-        textoEstado = `🔴 ATRASADO: $${deudaActual.toFixed(2)}`;
-        mensajeWa = `🔴 ADVERTENCIA: Presentas un saldo atrasado total de $${deudaActual.toFixed(2)}. Por favor, realiza tu abono lo antes posible para evitar bloqueos.`;
-        document.getElementById('estado-mensaje').style.background = "rgba(211,47,47,0.1)";
-    }
-
-    document.getElementById('estado-nombre').innerText = c.nombre;
-    document.getElementById('estado-fecha').innerText = `Corte del sistema al: ${fechaHoy}`;
-    document.getElementById('estado-saldo').innerText = `$${deudaActual.toFixed(2)}`;
-    document.getElementById('estado-saldo').style.color = colorEstado;
-    document.getElementById('estado-mensaje').innerText = textoEstado;
-    document.getElementById('estado-mensaje').style.color = colorEstado;
-
-    const textoMensaje = `📊 *REPORTE DE ESTADO DE CUENTA*\n\nHola ${c.nombre},\nEste es un resumen de tu saldo actual en la plataforma:\n\n*${mensajeWa}*\n\n🔗 *Puedes verificar el detalle de tus movimientos y el tiempo restante de tu unidad en este link único:*\n${linkDriver}\n\nAtte,\nMaster Mobility.`;
-
-    try {
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        const elementoEstado = document.getElementById('estado-canvas');
-        const canvas = await html2canvas(elementoEstado, { backgroundColor: '#050505', scale: 2 });
-        
-        const imagenDataUrl = canvas.toDataURL("image/png");
-        const respuesta = await fetch(imagenDataUrl);
-        const blob = await respuesta.blob();
-        const archivoImagen = new File([blob], "resumen_cuenta.png", { type: "image/png" });
-
-        if (navigator.canShare && navigator.canShare({ files: [archivoImagen] })) {
-            try {
-                await navigator.share({
-                    title: 'Estado de Cuenta Global',
-                    text: textoMensaje,
-                    files: [archivoImagen]
-                });
-            } catch (error) {
-                console.log("Envío cancelado o fallido:", error);
-            }
-        } else {
-            alert("Tu dispositivo no soporta adjuntar la imagen directo por link. Se abrirá WhatsApp enviando el detalle por texto.");
-            const urlWa = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(textoMensaje)}`;
-            window.open(urlWa, '_blank');
-        }
-    } catch (err) {
-        alert("Error al generar la imagen de estado: " + err.message);
-    }
 }
 
 function prepararAlertaManual() {
@@ -945,15 +909,11 @@ function prepararAlertaManual() {
         document.getElementById('alerta-motivo').value = alerta.motivo || '';
         if(alerta.color) document.getElementById('alerta-color').value = alerta.color;
         document.getElementById('alerta-tiempo-falso').value = alerta.tiempoFalso || '';
-    } else {
-        document.getElementById('form-alerta').reset();
-    }
+    } else { document.getElementById('form-alerta').reset(); }
     document.getElementById('modal-form-alerta').style.display = 'flex';
 }
 
-function cerrarAlertaManual() {
-    document.getElementById('modal-form-alerta').style.display = 'none';
-}
+function cerrarAlertaManual() { document.getElementById('modal-form-alerta').style.display = 'none'; }
 
 async function activarAlerta(e) {
     e.preventDefault();
@@ -1003,15 +963,14 @@ function escucharAlertasChofer(id) {
             let cuota = parseFloat(data.cuota_fija) || 25;
             let deudaHoy = Math.min(deudaActual, cuota);
             let deudaAtraso = Math.max(0, deudaActual - cuota);
-
             document.getElementById('finanzas-deuda-monto').innerText = `$${deudaActual.toFixed(2)}`;
             
             let desglose = "";
             if (deudaActual <= 0) {
                 desglose = "<div style='color:var(--success); font-weight:bold;'><i class='fa-solid fa-check-circle'></i> Cuenta al día (Paz y Salvo)</div>";
             } else {
-                if(deudaHoy > 0) desglose += `<div style='color:var(--info); margin-bottom:8px; font-weight:bold;'>CUOTA DE HOY (Vence 11:59 PM): <span style='color:white;'>$${deudaHoy.toFixed(2)}</span></div>`;
-                if(deudaAtraso > 0) desglose += `<div style='color:var(--red); font-weight:bold;'>SALDO VENCIDO (Atraso): <span style='color:white;'>$${deudaAtraso.toFixed(2)}</span></div>`;
+                if(deudaHoy > 0) desglose += `<div style='color:var(--info); margin-bottom:8px; font-weight:bold;'>CUOTA DE HOY: <span style='color:white;'>$${deudaHoy.toFixed(2)}</span></div>`;
+                if(deudaAtraso > 0) desglose += `<div style='color:var(--red); font-weight:bold;'>SALDO VENCIDO: <span style='color:white;'>$${deudaAtraso.toFixed(2)}</span></div>`;
             }
             document.getElementById('finanzas-desglose').innerHTML = desglose;
         }
@@ -1031,39 +990,99 @@ function escucharAlertasChofer(id) {
         const data = doc.data();
         cA.style.background = data.color === 'red' ? "rgba(211,47,47,0.15)" : "rgba(255,107,0,0.15)";
         cA.style.borderColor = data.color === 'red' ? "var(--red)" : "var(--orange)";
-        
         document.getElementById('chofer-titulo-estado').innerText = data.color === 'red' ? "⚠️ RESTRICCIÓN DE UNIDAD" : "🚨 NOTIFICACIÓN DE PAGO";
         document.getElementById('chofer-motivo').innerText = data.motivo;
         
+        if (timerInterval) clearInterval(timerInterval);
+
         if (data.tiempoFalso && data.tiempoFalso.trim() !== "") {
-            clearInterval(timerInterval);
             document.getElementById('timer-display').innerText = data.tiempoFalso;
             document.getElementById('timer-display').style.color = "white";
         } else if (data.expiresAt) {
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
+            const actualizarReloj = () => {
                 const res = data.expiresAt - Date.now();
                 if (res <= 0) { 
                     document.getElementById('timer-display').innerText = "BLOQUEADO"; 
                     document.getElementById('timer-display').style.color = "var(--red)";
                     clearInterval(timerInterval); 
                 } else { 
-                    // MODIFICACIÓN: Cálculo matemático directo de horas, minutos y segundos para evitar que se rompa al pasar las 24 hrs.
                     let totalSeconds = Math.floor(res / 1000);
                     let hours = Math.floor(totalSeconds / 3600);
                     let minutes = Math.floor((totalSeconds % 3600) / 60);
                     let seconds = totalSeconds % 60;
-                    
-                    let formattedTime = 
-                        String(hours).padStart(2, '0') + ':' + 
-                        String(minutes).padStart(2, '0') + ':' + 
-                        String(seconds).padStart(2, '0');
-                        
                     document.getElementById('timer-display').style.color = "white";
-                    document.getElementById('timer-display').innerText = formattedTime; 
+                    document.getElementById('timer-display').innerText = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0'); 
                 }
-            }, 1000);
+            };
+            actualizarReloj();
+            timerInterval = setInterval(actualizarReloj, 1000);
         }
+    });
+}
+
+function compartirRecibo(fecha, monto, metodo) {
+    if(!conductorSeleccionadoActual) return;
+    const c = conductorSeleccionadoActual;
+    const deudaRestante = parseFloat(c.deuda) || 0;
+    
+    document.getElementById('recibo-nombre').innerText = c.nombre;
+    document.getElementById('recibo-fecha').innerText = fecha;
+    document.getElementById('recibo-monto').innerText = `$${monto.toFixed(2)}`;
+    document.getElementById('recibo-metodo').innerText = metodo;
+    document.getElementById('recibo-saldo').innerText = `$${deudaRestante.toFixed(2)}`;
+    
+    const estadoElem = document.getElementById('recibo-estado');
+    if(deudaRestante <= 0) {
+        estadoElem.innerText = "¡PAZ Y SALVO!";
+        estadoElem.style.color = "var(--success)";
+    } else {
+        estadoElem.innerText = "SALDO PENDIENTE";
+        estadoElem.style.color = "var(--orange)";
+    }
+    
+    const canvasEl = document.getElementById('recibo-canvas');
+    canvasEl.style.left = "0"; 
+    html2canvas(canvasEl, { backgroundColor: '#050505' }).then(canvas => {
+        canvasEl.style.left = "-9999px"; 
+        canvas.toBlob(blob => {
+            const file = new File([blob], "recibo.png", { type: "image/png" });
+            if (navigator.share) {
+                navigator.share({ title: 'Recibo Master Mobility', files: [file] }).catch(err => console.log(err));
+            } else { alert("Tu navegador no soporta compartir imágenes directo."); }
+        });
+    });
+}
+
+function compartirEstadoCuenta() {
+    if(!conductorSeleccionadoActual) return;
+    const c = conductorSeleccionadoActual;
+    const deudaRestante = parseFloat(c.deuda) || 0;
+    
+    document.getElementById('estado-nombre').innerText = c.nombre;
+    document.getElementById('estado-fecha').innerText = new Date().toLocaleDateString('es-PA');
+    document.getElementById('estado-saldo').innerText = `$${deudaRestante.toFixed(2)}`;
+    
+    const msgElem = document.getElementById('estado-mensaje');
+    if(deudaRestante <= 0) {
+        msgElem.innerText = "El conductor se encuentra PAZ Y SALVO con sus obligaciones.";
+        msgElem.style.color = "var(--success)";
+        msgElem.style.background = "rgba(0,255,136,0.1)";
+    } else {
+        msgElem.innerText = "El conductor mantiene un SALDO PENDIENTE que debe ser cancelado pronto.";
+        msgElem.style.color = "var(--orange)";
+        msgElem.style.background = "rgba(255,107,0,0.1)";
+    }
+    
+    const canvasEl = document.getElementById('estado-canvas');
+    canvasEl.style.left = "0"; 
+    html2canvas(canvasEl, { backgroundColor: '#050505' }).then(canvas => {
+        canvasEl.style.left = "-9999px"; 
+        canvas.toBlob(blob => {
+            const file = new File([blob], "estado.png", { type: "image/png" });
+            if (navigator.share) {
+                navigator.share({ title: 'Estado Master Mobility', files: [file] }).catch(err => console.log(err));
+            } else { alert("Tu navegador no soporta compartir imágenes directo."); }
+        });
     });
 }
 </script>

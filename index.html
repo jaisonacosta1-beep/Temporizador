@@ -437,13 +437,15 @@ function iniciarRelojAdmin() {
     adminTickInterval = setInterval(() => {
         const ahora = Date.now();
         
+        // Evitar procesar si los conductores aún no cargan para no tener falsos negativos
+        if(appData.conductores.length === 0) return; 
+
         for(let id in appData.alertas) {
             let al = appData.alertas[id];
             let choferExiste = appData.conductores.find(c => c.id === id);
             
+            // SE ELIMINÓ la línea de db.collection().doc(id).delete() que borraba la alerta por accidente
             if(!choferExiste) {
-                db.collection('alertas_temporizador').doc(id).delete().catch(()=>{});
-                delete appData.alertas[id];
                 continue; 
             }
 
@@ -486,7 +488,7 @@ function iniciarRelojAdmin() {
                     estadoP.innerText = "Modo: Tiempo Fijo Falso";
                 } else if(al.expiresAt) {
                     let res = al.expiresAt - ahora;
-                    if(res > 0) {
+                    if(res > 0 && al.estado === 'corriendo') {
                         let totalSeconds = Math.floor(res / 1000);
                         let hours = Math.floor(totalSeconds / 3600);
                         let minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -936,6 +938,7 @@ async function activarAlerta(e) {
             estado: 'corriendo', 
             activo: true
         });
+        cerrarAlertaManual();
         alert("Cronómetro manual activado.");
     } catch(err) { alert("Error: " + err.message); } 
     finally { btn.disabled = false; }
@@ -985,6 +988,7 @@ function escucharAlertasChofer(id) {
             document.getElementById('chofer-motivo').innerText = "Vehículo autorizado para operaciones. Todo en orden.";
             document.getElementById('timer-display').innerText = "00:00:00";
             document.getElementById('timer-display').style.color = "white";
+            if(timerInterval) clearInterval(timerInterval); // Apagar el reloj si no hay alerta
             return;
         }
         const data = doc.data();
@@ -1001,7 +1005,9 @@ function escucharAlertasChofer(id) {
         } else if (data.expiresAt) {
             const actualizarReloj = () => {
                 const res = data.expiresAt - Date.now();
-                if (res <= 0) { 
+                
+                // Se agregó `|| data.estado === 'vencido'` para forzar el bloqueo sincronizado
+                if (res <= 0 || data.estado === 'vencido') { 
                     document.getElementById('timer-display').innerText = "BLOQUEADO"; 
                     document.getElementById('timer-display').style.color = "var(--red)";
                     clearInterval(timerInterval); 

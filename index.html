@@ -1425,7 +1425,8 @@
                 <option value="Yappy">Yappy (Banco General)</option>
                 <option value="ACH / Transferencia">ACH / Transferencia</option>
                 <option value="Depósito en Cuenta">Depósito en Cuenta</option>
-                <option value="Efectivo">💵 Efectivo (Sin Captura ni Referencia)</option>
+                <option value="Efectivo en Local">💵 Efectivo (Dejado en el Local/Base)</option>
+                <option value="Efectivo al Admin">💵 Efectivo (Entregado al Admin)</option>
               </select>
             </div>
             <div id="driver-ref-field-wrap">
@@ -1631,7 +1632,8 @@
               <option value="Yappy">Yappy</option>
               <option value="ACH / Transferencia">ACH / Transferencia</option>
               <option value="Depósito en Cuenta">Depósito en Cuenta</option>
-              <option value="Efectivo">Efectivo</option>
+              <option value="Efectivo en Local">Efectivo en Local</option>
+              <option value="Efectivo al Admin">Efectivo al Admin</option>
               <option value="Manual Admin">Manual Admin</option>
             </select>
           </div>
@@ -2458,6 +2460,223 @@
       </div>
     </div>
   </div>
+
+  <!-- ========================================================== -->
+  <!-- MÓDULO NUEVO: ASISTENTE DE INTELIGENCIA ARTIFICIAL (VOZ)   -->
+  <!-- ========================================================== -->
+  
+  <!-- Botón Flotante del Asistente (Solo visible para Admin) -->
+  <button id="btn-ai-assistant" onclick="startAIAssistant()" class="hidden fixed bottom-6 right-6 z-50 w-14 h-14 bg-indigo-600 rounded-full shadow-2xl text-white flex items-center justify-center hover:scale-110 hover:bg-indigo-500 transition-all border-4 border-indigo-200" title="Asistente de Voz IA">
+    <i data-lucide="mic" class="w-6 h-6"></i>
+  </button>
+
+  <!-- Overlay de Escucha Activa -->
+  <div id="ai-listening-overlay" class="fixed inset-0 bg-slate-900/85 backdrop-blur-md z-[100] hidden flex-col items-center justify-center text-white transition-opacity">
+    <div class="relative flex items-center justify-center mb-6">
+      <div class="absolute w-24 h-24 bg-indigo-500 rounded-full opacity-50 animate-ping"></div>
+      <div class="absolute w-32 h-32 bg-indigo-400 rounded-full opacity-20 animate-pulse"></div>
+      <div class="relative z-10 w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center shadow-2xl border-2 border-indigo-300">
+        <i data-lucide="mic" class="w-8 h-8 text-white"></i>
+      </div>
+    </div>
+    <h2 class="text-3xl font-black mb-2 tracking-tight">Te estoy escuchando...</h2>
+    <p id="ai-transcript-text" class="text-indigo-200 text-lg font-medium text-center max-w-md">
+      Prueba decir: <br><span class="font-bold text-white">"Resumen de ganancias"</span> o <span class="font-bold text-white">"Búscame al chofer..."</span>
+    </p>
+    <button onclick="stopAIAssistant()" class="mt-10 px-6 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-lg">
+      Cancelar
+    </button>
+  </div>
+
+  <script>
+    // Lógica del Asistente de Voz (Reconocimiento y Acción Visual)
+    let aiSpeechRecognition = null;
+
+    // Mostrar el botón flotante solo si estamos en el panel de administrador
+    const originalShowViewAI = showView;
+    showView = function(view) {
+      originalShowViewAI(view);
+      const aiBtn = document.getElementById('btn-ai-assistant');
+      if (aiBtn) {
+        if (view === 'admin') aiBtn.classList.remove('hidden');
+        else aiBtn.classList.add('hidden');
+      }
+    };
+
+    function initSpeechRecognition() {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        return false;
+      }
+      const SpeechReg = window.SpeechRecognition || window.webkitSpeechRecognition;
+      aiSpeechRecognition = new SpeechReg();
+      aiSpeechRecognition.continuous = false;
+      aiSpeechRecognition.interimResults = true;
+      aiSpeechRecognition.lang = 'es-PA'; // Español de Panamá / General
+
+      aiSpeechRecognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        
+        const displayText = finalTranscript || interimTranscript;
+        document.getElementById('ai-transcript-text').innerHTML = `<span class="text-white font-black text-xl">"${displayText}"</span>`;
+
+        if (finalTranscript) {
+          setTimeout(() => {
+            stopAIAssistant();
+            processAIAssistantCommand(finalTranscript);
+          }, 600);
+        }
+      };
+
+      aiSpeechRecognition.onerror = (event) => {
+        stopAIAssistant();
+        if (event.error !== 'aborted') {
+          showToast('No pude escucharte bien. Intenta de nuevo.', 'warning');
+        }
+      };
+      return true;
+    }
+
+    function startAIAssistant() {
+      if (!aiSpeechRecognition) {
+        const supported = initSpeechRecognition();
+        if (!supported) {
+          showToast('Tu navegador no soporta el reconocimiento de voz por micrófono. Usa Chrome o Safari.', 'error');
+          return;
+        }
+      }
+      
+      // Detener cualquier voz que esté hablando
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+      document.getElementById('ai-listening-overlay').classList.remove('hidden');
+      document.getElementById('ai-transcript-text').innerHTML = `Prueba decir: <br><span class="font-bold text-white">"Resumen de dinero"</span> o <span class="font-bold text-white">"¿Autos en taller?"</span>`;
+      
+      try {
+        aiSpeechRecognition.start();
+        playAdminAlertTone('driverNotes'); // Un tonito agradable para saber que empezó a escuchar
+      } catch(e) {}
+    }
+
+    function stopAIAssistant() {
+      document.getElementById('ai-listening-overlay').classList.add('hidden');
+      if (aiSpeechRecognition) {
+        try { aiSpeechRecognition.stop(); } catch(e) {}
+      }
+    }
+
+    // EL "CEREBRO" DEL ASISTENTE: Entiende y ejecuta acciones visuales en pantalla
+    function processAIAssistantCommand(transcript) {
+      const text = transcript.toLowerCase();
+      let handled = false;
+
+      // 1. Comando: Resumen de Dinero / Ganancias
+      if (text.includes('ganancia') || text.includes('resumen') || text.includes('dinero') || text.includes('cobrado') || text.includes('plata')) {
+        switchAdminTab('tab-dashboard');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        const collected = document.getElementById('stat-collected').textContent;
+        const net = document.getElementById('stat-net-profit').textContent;
+        
+        // Destello visual en las tarjetas
+        document.getElementById('stat-collected').parentElement.parentElement.classList.add('ring-4', 'ring-emerald-400');
+        setTimeout(() => document.getElementById('stat-collected').parentElement.parentElement.classList.remove('ring-4', 'ring-emerald-400'), 3000);
+
+        speakTextWithSelectedVoice(`Mostrando el panel financiero en pantalla. Hasta ahora, el total cobrado es de ${collected}, dejando una ganancia neta en tu bolsillo de ${net}.`);
+        handled = true;
+      }
+      
+      // 2. Comando: Choferes en Mora / Deudas Generales
+      else if (text.includes('deben') || text.includes('mora') || text.includes('rojo') || text.includes('vencido') || text.includes('quién debe')) {
+        switchAdminTab('tab-dashboard');
+        
+        const overdues = appState.drivers.filter(d => {
+          if (d.billingPaused) return false;
+          return getDriverOverdueInfo(d).overdueBalance > 0;
+        });
+
+        const grid = document.getElementById('dashboard-traffic-light-grid');
+        if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        if (overdues.length > 0) {
+          speakTextWithSelectedVoice(`Ubicando el semáforo. Tienes ${overdues.length} conductores con saldo pendiente. Revisa las tarjetas en color rojo o amarillo en la pantalla.`);
+        } else {
+          speakTextWithSelectedVoice(`Mostrando el semáforo. Excelentes noticias, ningún conductor tiene saldo vencido en este momento.`);
+        }
+        handled = true;
+      }
+
+      // 3. Comando: Taller, Mantenimiento, Choques o Fallas
+      else if (text.includes('taller') || text.includes('mantenimiento') || text.includes('choque') || text.includes('falla') || text.includes('dañado')) {
+        switchAdminTab('tab-dashboard');
+        
+        const alertsContainer = document.getElementById('dashboard-maintenance-alerts');
+        if (alertsContainer) alertsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        const inShop = appState.cars.filter(c => c.status === 'Taller');
+        const faultCount = appState.faultReports ? appState.faultReports.length : 0;
+
+        let msg = `Enfocando alertas de mantenimiento. `;
+        if (inShop.length > 0) msg += `Actualmente hay ${inShop.length} vehículos marcados en el taller. `;
+        if (faultCount > 0) msg += `Tienes ${faultCount} reporte de falla pendiente de revisión.`;
+        if (inShop.length === 0 && faultCount === 0) msg += `Toda la flota está operando sin problemas reportados.`;
+
+        speakTextWithSelectedVoice(msg);
+        handled = true;
+      }
+
+      // 4. Comando: Buscar a un Conductor Específico por Nombre (El más inteligente)
+      else if (text.includes('chofer') || text.includes('conductor') || text.includes('busca a') || text.includes('muéstrame a') || text.includes('cómo va')) {
+        
+        // Tratar de extraer el nombre que dijo el usuario
+        const words = text.replace(/[.,¿?]/g, '').split(' ');
+        let targetDriver = null;
+
+        for (let driver of appState.drivers) {
+          const firstNames = driver.name.toLowerCase().split(' ');
+          // Revisar si dijo el nombre o apellido de alguno
+          if (firstNames.some(n => n.length > 2 && text.includes(n))) {
+            targetDriver = driver;
+            break;
+          }
+        }
+
+        if (targetDriver) {
+          switchAdminTab('tab-drivers');
+          const balInfo = formatDriverBalanceInfo(targetDriver);
+          
+          setTimeout(() => {
+            openViewDriverModal(targetDriver.id);
+          }, 400); // Pequeña pausa para que se vea el cambio de pestaña
+
+          let msg = `Abriendo la ficha del conductor ${targetDriver.name}. `;
+          if (balInfo.type === 'debt') msg += `Tiene una ${balInfo.label} de ${balInfo.amount} dólares.`;
+          else if (balInfo.type === 'credit') msg += `Tiene un saldo a favor.`;
+          else msg += `Su cuenta está al día, pagado hoy.`;
+
+          speakTextWithSelectedVoice(msg);
+          handled = true;
+        } else {
+          // Si dijo "choferes" pero no dijo nombre, vamos al directorio
+          switchAdminTab('tab-drivers');
+          speakTextWithSelectedVoice(`Abriendo el directorio completo. Tienes ${appState.drivers.length} conductores registrados en total.`);
+          handled = true;
+        }
+      }
+
+      // 5. Respuesta por defecto si no entendió la orden
+      if (!handled) {
+        speakTextWithSelectedVoice("No logré identificar qué dato necesitas. Prueba preguntando por las ganancias, los autos en taller, o pide que te muestre a un chofer específico.");
+      }
+    }
+  </script>
 
   <script>
     // Configuración base de Firebase
@@ -3924,7 +4143,7 @@
     function handleDriverPaymentMethodChange() {
       const methodSelect = document.getElementById('driver-input-method');
       if (!methodSelect) return;
-      const isCash = methodSelect.value === 'Efectivo';
+      const isCash = methodSelect.value.includes('Efectivo');
 
       const uploadSection = document.getElementById('driver-receipt-upload-section');
       const refWrap = document.getElementById('driver-ref-field-wrap');
@@ -5487,7 +5706,7 @@
       }
 
       const method = document.getElementById('driver-input-method').value;
-      const isCash = method === 'Efectivo';
+      const isCash = method.includes('Efectivo');
       const amount = parseFloat(document.getElementById('driver-input-amount').value) || 0;
       const date = document.getElementById('driver-input-date').value || new Date().toISOString().split('T')[0];
       const ref = isCash ? 'EFECTIVO' : document.getElementById('driver-input-ref').value.trim().toUpperCase();
@@ -6787,7 +7006,6 @@
         if (Date.now() - activeAlertsTime['payments'] <= 30000) {
           playAdminAlertTone('payments');
         }
-        return;
       } else {
         activeAlertsTime['payments'] = 0;
       }
@@ -6803,7 +7021,6 @@
           if (Date.now() - activeAlertsTime['overdue'] <= 30000) {
             playAdminAlertTone('overdue');
           }
-          return;
         } else {
           activeAlertsTime['overdue'] = 0;
         }
@@ -7425,7 +7642,7 @@
       (appState.payments || [])
         .filter(p => p.status === 'Aprobado' && driverIds.includes(p.driverId))
         .forEach(p => {
-          if (p.method === 'Efectivo' || p.method === '💵 Efectivo (Sin Captura ni Referencia)' || p.method === 'Efectivo Entregado') {
+          if (p.method === 'Efectivo en Local') {
             collectedCash += (Number(p.amount) || 0);
           } else {
             collectedBank += (Number(p.amount) || 0);
@@ -7820,7 +8037,7 @@
 
       const pendingCash = (appState.payments || []).filter(p =>
         (!p.status || p.status === 'Pendiente') && 
-        p.method === 'Efectivo' && 
+        p.method === 'Efectivo en Local' && 
         driverIds.includes(p.driverId)
       );
 
@@ -7856,21 +8073,20 @@
         const approvedPayments = (appState.payments || []).filter(p => 
           p.status === 'Aprobado' && 
           driverIds.includes(p.driverId) &&
-          p.method && p.method.includes('Efectivo')
+          p.method === 'Efectivo en Local'
         ).slice(0, 15);
         if (approvedPayments.length === 0) {
           approvedContainer.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">No hay pagos en efectivo aprobados aún.</p>';
         } else {
           approvedContainer.innerHTML = approvedPayments.map(p => {
             const drv = appState.drivers.find(d => d.id === p.driverId);
-            const isCash = p.method.includes('Efectivo');
             return `
               <div class="py-2.5 flex items-center justify-between border-b border-slate-700 last:border-0">
                 <div>
                   <span class="font-black text-slate-100">${drv ? drv.name : 'Conductor'}</span>
-                  <span class="block text-[10px] text-slate-400">${p.date} · <span class="${isCash ? 'text-emerald-400' : 'text-indigo-400'} font-bold">${p.method}</span></span>
+                  <span class="block text-[10px] text-slate-400">${p.date} · <span class="text-emerald-400 font-bold">${p.method}</span></span>
                 </div>
-                <span class="font-black ${isCash ? 'text-emerald-400' : 'text-indigo-400'}">$${Number(p.amount).toFixed(2)}</span>
+                <span class="font-black text-emerald-400">$${Number(p.amount).toFixed(2)}</span>
               </div>
             `;
           }).join('');
@@ -8034,6 +8250,166 @@
       
       renderPartnerViewPayouts(partnerId);
     };
+  </script>
+
+  <!-- ========================================================== -->
+  <!-- MÓDULO NUEVO: ASISTENTE DE INTELIGENCIA ARTIFICIAL (VOZ)   -->
+  <!-- ========================================================== -->
+  <button id="btn-ai-assistant" onclick="startAIAssistant()" class="hidden fixed bottom-6 right-6 z-50 w-14 h-14 bg-indigo-600 rounded-full shadow-2xl text-white flex items-center justify-center hover:scale-110 hover:bg-indigo-500 transition-all border-4 border-indigo-200" title="Asistente de Voz IA">
+    <i data-lucide="mic" class="w-6 h-6"></i>
+  </button>
+
+  <div id="ai-listening-overlay" class="fixed inset-0 bg-slate-900/85 backdrop-blur-md z-[100] hidden flex-col items-center justify-center text-white transition-opacity">
+    <div class="relative flex items-center justify-center mb-6">
+      <div class="absolute w-24 h-24 bg-indigo-500 rounded-full opacity-50 animate-ping"></div>
+      <div class="absolute w-32 h-32 bg-indigo-400 rounded-full opacity-20 animate-pulse"></div>
+      <div class="relative z-10 w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center shadow-2xl border-2 border-indigo-300">
+        <i data-lucide="mic" class="w-8 h-8 text-white"></i>
+      </div>
+    </div>
+    <h2 class="text-3xl font-black mb-2 tracking-tight">Te estoy escuchando...</h2>
+    <p id="ai-transcript-text" class="text-indigo-200 text-lg font-medium text-center max-w-md">
+      Prueba decir: <br><span class="font-bold text-white">"Resumen de ganancias"</span> o <span class="font-bold text-white">"Búscame al chofer..."</span>
+    </p>
+    <button onclick="stopAIAssistant()" class="mt-10 px-6 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-lg">
+      Cancelar
+    </button>
+  </div>
+
+  <script>
+    // Lógica del Asistente de Voz (Reconocimiento y Acción Visual)
+    let aiSpeechRecognition = null;
+
+    const originalShowViewAI = window.showView || function(){};
+    window.showView = function(view) {
+      originalShowViewAI(view);
+      const aiBtn = document.getElementById('btn-ai-assistant');
+      if (aiBtn) {
+        if (view === 'admin') aiBtn.classList.remove('hidden');
+        else aiBtn.classList.add('hidden');
+      }
+    };
+
+    function initSpeechRecognition() {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return false;
+      const SpeechReg = window.SpeechRecognition || window.webkitSpeechRecognition;
+      aiSpeechRecognition = new SpeechReg();
+      aiSpeechRecognition.continuous = false;
+      aiSpeechRecognition.interimResults = true;
+      aiSpeechRecognition.lang = 'es-PA';
+
+      aiSpeechRecognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+          else interimTranscript += event.results[i][0].transcript;
+        }
+        const displayText = finalTranscript || interimTranscript;
+        document.getElementById('ai-transcript-text').innerHTML = `<span class="text-white font-black text-xl">"${displayText}"</span>`;
+
+        if (finalTranscript) {
+          setTimeout(() => {
+            stopAIAssistant();
+            processAIAssistantCommand(finalTranscript);
+          }, 600);
+        }
+      };
+      aiSpeechRecognition.onerror = (event) => {
+        stopAIAssistant();
+        if (event.error !== 'aborted') showToast('No pude escucharte bien. Intenta de nuevo.', 'warning');
+      };
+      return true;
+    }
+
+    function startAIAssistant() {
+      if (!aiSpeechRecognition) {
+        if (!initSpeechRecognition()) {
+          showToast('Tu navegador no soporta el reconocimiento de voz por micrófono.', 'error');
+          return;
+        }
+      }
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      document.getElementById('ai-listening-overlay').classList.remove('hidden');
+      document.getElementById('ai-transcript-text').innerHTML = `Prueba decir: <br><span class="font-bold text-white">"Resumen de dinero"</span> o <span class="font-bold text-white">"¿Autos en taller?"</span>`;
+      try {
+        aiSpeechRecognition.start();
+        if(typeof playAdminAlertTone === 'function') playAdminAlertTone('driverNotes');
+      } catch(e) {}
+    }
+
+    function stopAIAssistant() {
+      document.getElementById('ai-listening-overlay').classList.add('hidden');
+      if (aiSpeechRecognition) {
+        try { aiSpeechRecognition.stop(); } catch(e) {}
+      }
+    }
+
+    function processAIAssistantCommand(transcript) {
+      const text = transcript.toLowerCase();
+      let handled = false;
+
+      if (text.includes('ganancia') || text.includes('resumen') || text.includes('dinero') || text.includes('cobrado') || text.includes('plata')) {
+        switchAdminTab('tab-dashboard');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const collected = document.getElementById('stat-collected').textContent;
+        const net = document.getElementById('stat-net-profit').textContent;
+        document.getElementById('stat-collected').parentElement.parentElement.classList.add('ring-4', 'ring-emerald-400');
+        setTimeout(() => document.getElementById('stat-collected').parentElement.parentElement.classList.remove('ring-4', 'ring-emerald-400'), 3000);
+        speakTextWithSelectedVoice(`Mostrando el panel financiero en pantalla. Hasta ahora, el total cobrado es de ${collected}, dejando una ganancia neta en tu bolsillo de ${net}.`);
+        handled = true;
+      }
+      else if (text.includes('deben') || text.includes('mora') || text.includes('rojo') || text.includes('vencido') || text.includes('quién debe')) {
+        switchAdminTab('tab-dashboard');
+        const overdues = appState.drivers.filter(d => !d.billingPaused && getDriverOverdueInfo(d).overdueBalance > 0);
+        const grid = document.getElementById('dashboard-traffic-light-grid');
+        if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (overdues.length > 0) speakTextWithSelectedVoice(`Ubicando el semáforo. Tienes ${overdues.length} conductores con saldo pendiente. Revisa las tarjetas en color rojo o amarillo.`);
+        else speakTextWithSelectedVoice(`Mostrando el semáforo. Excelentes noticias, ningún conductor tiene saldo vencido.`);
+        handled = true;
+      }
+      else if (text.includes('taller') || text.includes('mantenimiento') || text.includes('choque') || text.includes('falla') || text.includes('dañado')) {
+        switchAdminTab('tab-dashboard');
+        const alertsContainer = document.getElementById('dashboard-maintenance-alerts');
+        if (alertsContainer) alertsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const inShop = appState.cars.filter(c => c.status === 'Taller');
+        const faultCount = appState.faultReports ? appState.faultReports.length : 0;
+        let msg = `Enfocando alertas de mantenimiento. `;
+        if (inShop.length > 0) msg += `Actualmente hay ${inShop.length} vehículos marcados en el taller. `;
+        if (faultCount > 0) msg += `Tienes ${faultCount} reporte pendiente.`;
+        if (inShop.length === 0 && faultCount === 0) msg += `Toda la flota está operando sin problemas reportados.`;
+        speakTextWithSelectedVoice(msg);
+        handled = true;
+      }
+      else if (text.includes('chofer') || text.includes('conductor') || text.includes('busca a') || text.includes('muéstrame a') || text.includes('cómo va')) {
+        const words = text.replace(/[.,¿?]/g, '').split(' ');
+        let targetDriver = null;
+        for (let driver of appState.drivers) {
+          const firstNames = driver.name.toLowerCase().split(' ');
+          if (firstNames.some(n => n.length > 2 && text.includes(n))) {
+            targetDriver = driver;
+            break;
+          }
+        }
+        if (targetDriver) {
+          switchAdminTab('tab-drivers');
+          const balInfo = formatDriverBalanceInfo(targetDriver);
+          setTimeout(() => { openViewDriverModal(targetDriver.id); }, 400);
+          let msg = `Abriendo la ficha del conductor ${targetDriver.name}. `;
+          if (balInfo.type === 'debt') msg += `Tiene una ${balInfo.label} de ${balInfo.amount} dólares.`;
+          else if (balInfo.type === 'credit') msg += `Tiene un saldo a favor.`;
+          else msg += `Su cuenta está al día.`;
+          speakTextWithSelectedVoice(msg);
+          handled = true;
+        } else {
+          switchAdminTab('tab-drivers');
+          speakTextWithSelectedVoice(`Abriendo el directorio completo. Tienes ${appState.drivers.length} conductores registrados en total.`);
+          handled = true;
+        }
+      }
+
+      if (!handled) speakTextWithSelectedVoice("No logré identificar qué dato necesitas. Prueba preguntando por las ganancias, los autos en taller, o pide que te muestre a un chofer específico.");
+    }
   </script>
 </body>
 </html>

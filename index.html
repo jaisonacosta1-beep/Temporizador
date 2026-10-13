@@ -1507,8 +1507,12 @@
         </div>
         <div class="grid grid-cols-2 gap-3 text-xs">
           <div class="p-3 bg-slate-900 rounded-xl border border-slate-700">
-            <span class="block text-[10px] text-slate-400 font-bold uppercase">Total Cobrado</span>
-            <span id="partner-portal-collected" class="text-emerald-400 font-black text-base">$0.00</span>
+            <span class="block text-[10px] text-slate-400 font-bold uppercase">En Banco (Yappy/ACH)</span>
+            <span id="partner-portal-bank" class="text-indigo-400 font-black text-base">$0.00</span>
+          </div>
+          <div class="p-3 bg-slate-900 rounded-xl border border-slate-700">
+            <span class="block text-[10px] text-slate-400 font-bold uppercase">Efectivo en Mano</span>
+            <span id="partner-portal-cash" class="text-emerald-400 font-black text-base">$0.00</span>
           </div>
           <div class="p-3 bg-slate-900 rounded-xl border border-slate-700">
             <span class="block text-[10px] text-slate-400 font-bold uppercase">Gastos de Taller</span>
@@ -1516,13 +1520,19 @@
           </div>
           <div class="p-3 bg-slate-900 rounded-xl border border-slate-700">
             <span class="block text-[10px] text-slate-400 font-bold uppercase">Ya Depositado</span>
-            <span id="partner-portal-paid" class="text-indigo-400 font-black text-base">-$0.00</span>
+            <span id="partner-portal-paid" class="text-sky-400 font-black text-base">-$0.00</span>
           </div>
-          <div class="p-3 bg-slate-700 rounded-xl border border-slate-600">
-            <span class="block text-[10px] text-white font-bold uppercase">Corte Pendiente a Entregar</span>
-            <span id="partner-portal-pending" class="text-white font-black text-base">$0.00</span>
+          <div class="col-span-2 p-3 bg-slate-700 rounded-xl border border-slate-600 flex justify-between items-center">
+            <span class="text-[10px] text-white font-bold uppercase">Corte Pendiente a Recibir</span>
+            <span id="partner-portal-pending" class="text-white font-black text-lg">$0.00</span>
           </div>
         </div>
+      </div>
+
+      <!-- Historial de Pagos Aprobados -->
+      <div class="bg-slate-800 rounded-3xl border border-slate-700 p-5 shadow-lg">
+        <h3 class="text-sm font-black text-white mb-3">Historial de Pagos Aprobados</h3>
+        <div id="partner-approved-payments-list" class="divide-y divide-slate-700 text-xs"></div>
       </div>
 
       <!-- Gastos y Liquidaciones -->
@@ -6448,6 +6458,7 @@
     let lastDriverVoiceTimestamp = 0;
     let driverGraceToastShownForId = null;
     let driverAudioGestureUnlocked = false;
+    let activeAlertsTime = {};
 
     function populateDeviceVoicesInSelector() {
       if (!('speechSynthesis' in window)) return;
@@ -6543,6 +6554,11 @@
         }
 
         window.speechSynthesis.speak(utter);
+        
+        // Límite de seguridad: apagar la voz si dura más de 30 segundos
+        setTimeout(() => {
+          if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+        }, 30000);
       } catch (e) {}
     }
 
@@ -6570,11 +6586,21 @@
       const snd = Object.assign({ driverVoice: true, graceHours: 12 }, appState.soundSettings || {});
 
       const driver = appState.drivers.find(d => d.id === currentSession.driverId);
-      if (!driver || driver.billingPaused) return;
+      if (!driver || driver.billingPaused) {
+        activeAlertsTime['driverVoice'] = 0;
+        return;
+      }
 
       const info = getDriverOverdueInfo(driver);
       // Si no debe nada del día anterior (solo corre el día corriente), NO emitir alerta de cobro ni voz
-      if (info.overdueBalance <= 0) return;
+      if (info.overdueBalance <= 0) {
+        activeAlertsTime['driverVoice'] = 0;
+        return;
+      }
+
+      // Evitar que la alerta de voz se repita por más de 30 segundos
+      if (!activeAlertsTime['driverVoice']) activeAlertsTime['driverVoice'] = Date.now();
+      if (!forceImmediate && (Date.now() - activeAlertsTime['driverVoice'] > 30000)) return;
 
       const now = new Date();
       const graceHours = Number(snd.graceHours || 12);
@@ -6730,14 +6756,25 @@
       // Si está en Modo Conductor, reproduce alerta de nota o voz hablada de pago/inmovilización
       if (currentSession.role === 'driver') {
         triggerDriverPaymentVoiceIfNeeded(false);
-        if (!snd.driverNotes) return;
+        if (!snd.driverNotes) {
+          activeAlertsTime['driverNotes'] = 0;
+          return;
+        }
         const driver = appState.drivers.find(d => d.id === currentSession.driverId);
         const gen = (appState.generalDriverNotice || '').trim();
         const per = driver ? (driver.personalNote || '').trim() : '';
-        if (!gen && !per) return;
+        if (!gen && !per) {
+          activeAlertsTime['driverNotes'] = 0;
+          return;
+        }
         const currentSig = `${gen}||${per}`;
         if (silencedDriverNoteSignature !== currentSig) {
-          playAdminAlertTone('driverNotes');
+          if (!activeAlertsTime['driverNotes']) activeAlertsTime['driverNotes'] = Date.now();
+          if (Date.now() - activeAlertsTime['driverNotes'] <= 30000) {
+            playAdminAlertTone('driverNotes');
+          }
+        } else {
+          activeAlertsTime['driverNotes'] = 0;
         }
         return;
       }
@@ -6746,8 +6783,13 @@
 
       const hasPendingPayments = normalizeCloudList(appState.payments).some(p => !p.status || p.status === 'Pendiente');
       if (snd.payments && hasPendingPayments) {
-        playAdminAlertTone('payments');
+        if (!activeAlertsTime['payments']) activeAlertsTime['payments'] = Date.now();
+        if (Date.now() - activeAlertsTime['payments'] <= 30000) {
+          playAdminAlertTone('payments');
+        }
         return;
+      } else {
+        activeAlertsTime['payments'] = 0;
       }
 
       if (snd.overdue) {
@@ -6757,9 +6799,16 @@
           return info.overdueDays >= 2;
         });
         if (hasOverdueDrivers) {
-          playAdminAlertTone('overdue');
+          if (!activeAlertsTime['overdue']) activeAlertsTime['overdue'] = Date.now();
+          if (Date.now() - activeAlertsTime['overdue'] <= 30000) {
+            playAdminAlertTone('overdue');
+          }
           return;
+        } else {
+          activeAlertsTime['overdue'] = 0;
         }
+      } else {
+        activeAlertsTime['overdue'] = 0;
       }
 
       if (snd.maintenance) {
@@ -6772,8 +6821,15 @@
           return false;
         });
         if (hasMaintAlerts) {
-          playAdminAlertTone('maintenance');
+          if (!activeAlertsTime['maintenance']) activeAlertsTime['maintenance'] = Date.now();
+          if (Date.now() - activeAlertsTime['maintenance'] <= 30000) {
+            playAdminAlertTone('maintenance');
+          }
+        } else {
+          activeAlertsTime['maintenance'] = 0;
         }
+      } else {
+        activeAlertsTime['maintenance'] = 0;
       }
     }
 
@@ -7363,9 +7419,20 @@
       const driverIds = partnerCars.map(c => c.driverId).filter(Boolean);
       const platesLabel = partnerCars.length > 0 ? partnerCars.map(c => c.plate).join(', ') : 'Sin autos';
 
-      const collected = (appState.payments || [])
+      let collectedBank = 0;
+      let collectedCash = 0;
+
+      (appState.payments || [])
         .filter(p => p.status === 'Aprobado' && driverIds.includes(p.driverId))
-        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+        .forEach(p => {
+          if (p.method === 'Efectivo' || p.method === '💵 Efectivo (Sin Captura ni Referencia)' || p.method === 'Efectivo Entregado') {
+            collectedCash += (Number(p.amount) || 0);
+          } else {
+            collectedBank += (Number(p.amount) || 0);
+          }
+        });
+
+      const collected = collectedBank + collectedCash;
 
       const expenses = (appState.expenses || [])
         .filter(e => carIds.includes(e.carId))
@@ -7376,9 +7443,13 @@
       const payouts = (appState.partnerPayouts || []).filter(po => po.partnerId === partnerId);
       const alreadyPaid = payouts.reduce((sum, po) => sum + (Number(po.amount) || 0), 0);
       const lastPayoutDate = payouts.length > 0 ? payouts[0].date : 'Sin liquidación previa';
-      const pendingToPay = Number(Math.max(0, netTotal - alreadyPaid).toFixed(2));
+      
+      // ADMIN DEBE = Ganancia Neta - Efectivo en mano (que ya tiene el socio) - Dinero ya depositado al banco del socio
+      const pendingToPay = Number((netTotal - collectedCash - alreadyPaid).toFixed(2));
 
       return {
+        collectedBank: Number(collectedBank.toFixed(2)),
+        collectedCash: Number(collectedCash.toFixed(2)),
         collected: Number(collected.toFixed(2)),
         expenses: Number(expenses.toFixed(2)),
         netTotal: Number(netTotal.toFixed(2)),
@@ -7728,10 +7799,19 @@
 
       // 1. Corte y Balance
       const s = calculatePartnerSettlement(partnerId);
-      document.getElementById('partner-portal-collected').textContent = `$${s.collected.toFixed(2)}`;
-      document.getElementById('partner-portal-expenses').textContent = `$${s.expenses.toFixed(2)}`;
-      document.getElementById('partner-portal-paid').textContent = `$${s.alreadyPaid.toFixed(2)}`;
-      document.getElementById('partner-portal-pending').textContent = `$${s.pendingToPay.toFixed(2)}`;
+      document.getElementById('partner-portal-bank').textContent = `$${s.collectedBank.toFixed(2)}`;
+      document.getElementById('partner-portal-cash').textContent = `$${s.collectedCash.toFixed(2)}`;
+      document.getElementById('partner-portal-expenses').textContent = `-$${s.expenses.toFixed(2)}`;
+      document.getElementById('partner-portal-paid').textContent = `-$${s.alreadyPaid.toFixed(2)}`;
+      
+      const pendingEl = document.getElementById('partner-portal-pending');
+      if (s.pendingToPay < 0) {
+        pendingEl.textContent = `Socio debe: $${Math.abs(s.pendingToPay).toFixed(2)}`;
+        pendingEl.classList.replace('text-white', 'text-rose-400');
+      } else {
+        pendingEl.textContent = `$${s.pendingToPay.toFixed(2)}`;
+        pendingEl.classList.replace('text-rose-400', 'text-white');
+      }
 
       // 2. Aprobación de Efectivo
       const partnerCars = (appState.cars || []).filter(c => c.partnerId === partnerId);
@@ -7770,7 +7850,34 @@
         }).join('');
       }
 
-      // 3. Historial de Gastos
+      // 3. Historial de Pagos Aprobados
+      const approvedContainer = document.getElementById('partner-approved-payments-list');
+      if (approvedContainer) {
+        const approvedPayments = (appState.payments || []).filter(p => 
+          p.status === 'Aprobado' && 
+          driverIds.includes(p.driverId) &&
+          p.method && p.method.includes('Efectivo')
+        ).slice(0, 15);
+        if (approvedPayments.length === 0) {
+          approvedContainer.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">No hay pagos en efectivo aprobados aún.</p>';
+        } else {
+          approvedContainer.innerHTML = approvedPayments.map(p => {
+            const drv = appState.drivers.find(d => d.id === p.driverId);
+            const isCash = p.method.includes('Efectivo');
+            return `
+              <div class="py-2.5 flex items-center justify-between border-b border-slate-700 last:border-0">
+                <div>
+                  <span class="font-black text-slate-100">${drv ? drv.name : 'Conductor'}</span>
+                  <span class="block text-[10px] text-slate-400">${p.date} · <span class="${isCash ? 'text-emerald-400' : 'text-indigo-400'} font-bold">${p.method}</span></span>
+                </div>
+                <span class="font-black ${isCash ? 'text-emerald-400' : 'text-indigo-400'}">$${Number(p.amount).toFixed(2)}</span>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      // 4. Historial de Gastos
       const expContainer = document.getElementById('partner-expenses-list');
       const partnerExpenses = (appState.expenses || []).filter(e => carIds.includes(e.carId));
       if (partnerExpenses.length === 0) {

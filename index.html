@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="es" class="h-full bg-slate-50">
 <head>
@@ -8306,29 +8305,30 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN
         }
 
         badge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-100 text-amber-700 border border-amber-300 badge-pulse';
-        badge.textContent = 'Verificando con Google...';
+        badge.textContent = 'Buscando mejor servidor...';
 
         try {
-          // Usamos el modelo estándar y estable gemini-3.5-flash directamente
-          const testRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: "Hola" }] }]
-            })
-          });
-          
-          if (!testRes.ok) {
-            const errorText = await testRes.text();
-            throw new Error(errorText);
+          // 1. Consultamos a Google qué modelos están activos en esta cuenta
+          const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+          if (!listRes.ok) {
+            const errTxt = await listRes.text();
+            throw new Error(errTxt);
           }
+          const listData = await listRes.json();
+          const available = (listData.models || [])
+            .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+            .map(m => m.name.replace('models/', ''));
 
-          localStorage.setItem('autorent_gemini_model', 'gemini-3.5-flash');
+          const preferredOrder = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
+          let selectedModel = preferredOrder.find(p => available.includes(p)) || available.find(a => a.includes('flash')) || available[0] || 'gemini-2.5-flash';
+
+          localStorage.setItem('autorent_gemini_model', selectedModel);
+          localStorage.setItem('autorent_gemini_models_list', JSON.stringify(available));
           localStorage.setItem('autorent_gemini_key', key);
 
           badge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 border border-emerald-300';
-          badge.innerHTML = '🟢 En Línea (gemini-3.5-flash)';
-          if (typeof showToast === 'function') showToast('¡Conexión Perfecta con Gemini!', 'success');
+          badge.innerHTML = `🟢 En Línea (${selectedModel})`;
+          if (typeof showToast === 'function') showToast(`¡Súper Cerebro Gemini conectado (${selectedModel})!`, 'success');
         } catch (err) {
           console.error(err);
           badge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-300';
@@ -8340,78 +8340,178 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN
       };
     });
 
-    // Actualizamos también la función que procesa los comandos de voz en el asistente
+    // Función avanzada que conecta toda la base de datos de AutoRent Pro con Gemini y evita fallos 503
     async function processAIAssistantCommand(transcript) {
-      const apiKey = localStorage.getItem('autorent_gemini_key');
+      const apiKey = (localStorage.getItem('autorent_gemini_key') || '').trim().replace(/[\s\n\r]/g, '');
       
-      if (!apiKey || apiKey.trim() === '') {
-        speakTextWithSelectedVoice("Hola. Para poder entenderte, necesitas poner tu clave de Gemini en la sección de ajustes.");
+      if (!apiKey) {
+        speakTextWithSelectedVoice("Hola. Para poder responderte, primero guarda tu clave de Gemini en la pestaña de ajustes.");
         return;
       }
 
       try {
-        const gananciasHoy = document.getElementById('stat-net-profit') ? document.getElementById('stat-net-profit').textContent : '$0.00';
-        const autosTaller = appState.cars ? appState.cars.filter(c => c.status === 'Taller').length : 0;
-        let choferesInfo = "Ninguno";
-        if (appState.drivers && appState.drivers.length > 0) {
-          choferesInfo = appState.drivers.map(d => {
-            let status = "al día";
-            if (d.balance > 0) status = "debe $" + d.balance;
-            if (d.balance < 0) status = "tiene saldo a favor de +$" + Math.abs(d.balance);
-            return `${d.name} (${status})`;
-          }).join(", ");
-        }
+        // 1. Recopilamos TODA la radiografía del sistema en tiempo real sin alterar los datos
+        const totalCobrado = document.getElementById('stat-collected') ? document.getElementById('stat-collected').textContent : '$0.00';
+        const totalGastado = document.getElementById('stat-expenses') ? document.getElementById('stat-expenses').textContent : '$0.00';
+        const gananciaNeta = document.getElementById('stat-net-profit') ? document.getElementById('stat-net-profit').textContent : '$0.00';
 
-        const systemPrompt = `Eres el Asistente Inteligente de "AutoRent Pro".
-Datos de la empresa: Ganancia Neta Hoy: ${gananciasHoy}. Autos en taller: ${autosTaller}. Choferes y sus estados: ${choferesInfo}.
-El usuario te dice: "${transcript}"
+        // Detalle completo de Choferes
+        const choferesDetalle = (appState.drivers || []).map(d => {
+          const car = typeof getDriverAssignedCar === 'function' ? getDriverAssignedCar(d.id) : null;
+          const bal = Number(d.balance) || 0;
+          let estadoCuenta = "Al día ($0)";
+          if (bal > 0) estadoCuenta = `Debe $${bal.toFixed(2)}`;
+          if (bal < 0) estadoCuenta = `Saldo a favor de +$${Math.abs(bal).toFixed(2)}`;
+          if (d.billingPaused) estadoCuenta += " (Cobro pausado)";
+          return `- ${d.name}: ${estadoCuenta}, Cuota diaria $${d.dailyRate || 25}, Auto: ${car ? car.model + ' Placa ' + car.plate : 'Sin auto'}, Tel: ${d.phone || 'N/A'}${d.isRentToOwn ? ', Plan Opción a Compra (' + (d.rtoPaidDays || 0) + ' cuotas pagadas)' : ''}`;
+        }).join('\n') || 'Sin choferes registrados.';
 
-Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN comillas invertidas):
-{"respuesta": "texto humano y natural que le dirás al usuario", "accion": "ganancias" | "choferes" | "taller" | "ninguna"}`;
+        // Detalle completo de Vehículos y Mantenimiento
+        const autosDetalle = (appState.cars || []).map(c => {
+          const nextOil = (Number(c.oilLastKm) || 0) + (Number(c.oilInterval) || 5000);
+          const remKm = nextOil - (Number(c.km) || 0);
+          const drv = (appState.drivers || []).find(d => d.id === c.driverId);
+          const part = (appState.partners || []).find(p => p.id === c.partnerId);
+          return `- ${c.model} (Placa ${c.plate}, Año ${c.year || 2023}): Estado ${c.status}, Odómetro ${c.km || 0} Km, Faltan ${remKm} Km para cambio de aceite, Chofer: ${drv ? drv.name : 'Disponible'}, Socio dueño: ${part ? part.name : 'Propio'}, Seguro vence: ${c.insuranceExpiry || 'N/A'}`;
+        }).join('\n') || 'Sin vehículos registrados.';
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey.trim()}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: systemPrompt }] }],
-            generationConfig: { 
-              temperature: 0.2
-            }
-          })
-        });
+        // Pagos pendientes y recientes
+        const pagosPendientes = (appState.payments || []).filter(p => !p.status || p.status === 'Pendiente');
+        const resumenPendientes = pagosPendientes.length > 0
+          ? pagosPendientes.map(p => `${p.driverName || 'Chofer'} reportó $${Number(p.amount).toFixed(2)} por ${p.method} (${p.date})`).join('; ')
+          : 'No hay pagos pendientes por aprobar en bandeja.';
 
-        if (!response.ok) {
-          const errText = await response.text();
-          throw new Error("Rechazo de Google: " + response.status + " " + errText);
-        }
+        // Gastos de taller recientes
+        const gastosRecientes = (appState.expenses || []).slice(0, 8).map(e => {
+          const c = (appState.cars || []).find(x => x.id === e.carId);
+          return `${e.category} en ${c ? c.plate : 'Auto'}: $${Number(e.amount).toFixed(2)} (${e.notes || ''}, ${e.date})`;
+        }).join('; ') || 'Sin gastos registrados.';
 
-        const data = await response.json();
+        // Socios y liquidaciones
+        const sociosDetalle = (appState.partners || []).map(p => {
+          if (typeof calculatePartnerSettlement === 'function') {
+            const s = calculatePartnerSettlement(p.id);
+            return `- Socio ${p.name} (${p.share || 100}%): Autos [${s.platesLabel}], Cobrado $${s.collected.toFixed(2)}, Gastos $${s.expenses.toFixed(2)}, Pendiente por entregarle hoy: $${s.pendingToPay.toFixed(2)}`;
+          }
+          return `- Socio ${p.name}`;
+        }).join('\n') || 'Sin socios registrados.';
+
+        // 2. Instrucciones completas para que Gemini razone con inteligencia total
+        const systemPrompt = `Eres el Gerente Virtual e Inteligencia Artificial oficial de "${brandingConfig.companyName || 'AutoRent Pro'}", un sistema avanzado de control de flota y alquiler de autos.
+
+CAPACIDADES QUE TIENES (para cuando el usuario te pregunte "¿Qué puedes hacer?" o "¿En qué me ayudas?"):
+- Puedes analizar y responder cualquier pregunta sobre ganancias, cobros, deudas de choferes, saldos a favor y pagos pendientes por aprobar.
+- Conoces el estado de cada auto de la flota, su kilometraje, a qué auto le falta poco para cambio de aceite, cuáles están en taller o alquilados y cuándo vencen sus seguros.
+- Sabes cuánto se ha gastado en taller/mantenimiento y cuánto dinero corresponde liquidar a cada socio inversionista.
+- Puedes dar recomendaciones de negocio, hacer cálculos rápidos y abrir automáticamente la pestaña que el usuario necesite ver en pantalla.
+
+RADIOGRAFÍA EN TIEMPO REAL DEL NEGOCIO AHORA MISMO:
+* Finanzas Globales: Total Cobrado: ${totalCobrado} | Total Gastos: ${totalGastado} | Ganancia Neta: ${gananciaNeta}
+* Bandeja de Pagos Pendientes (${pagosPendientes.length}): ${resumenPendientes}
+* Conductores Registrados:
+${choferesDetalle}
+* Flota de Vehículos y Mantenimiento:
+${autosDetalle}
+* Gastos de Taller Recientes: ${gastosRecientes}
+* Socios y Liquidaciones:
+${sociosDetalle}
+
+PREGUNTA O COMANDO DEL USUARIO: "${transcript}"
+
+INSTRUCCIÓN DE RESPUESTA:
+Responde de forma conversacional, clara, inteligente, directa y natural en español (pensada para ser leída por voz en 2 a 4 oraciones concisas).
+Devuelve ÚNICAMENTE un objeto JSON válido con estas 2 llaves (sin bloques markdown ni comillas triples):
+{"respuesta": "tu respuesta hablada aquí", "accion": "dashboard" | "flota" | "choferes" | "taller" | "gastos" | "socios" | "actas" | "ajustes" | "ninguna"}`;
+
+        // 3. Lista de modelos con respaldo automático anti-error 503 y 404
+        const savedModel = localStorage.getItem('autorent_gemini_model') || 'gemini-2.5-flash';
+        let savedList = [];
+        try { savedList = JSON.parse(localStorage.getItem('autorent_gemini_models_list') || '[]'); } catch(e) {}
         
-        if (!data.candidates || !data.candidates[0].content) {
-            throw new Error("Respuesta bloqueada por Google (Seguridad) o vacía.");
+        const fallbackCandidates = [
+          savedModel,
+          'gemini-2.5-flash',
+          'gemini-2.0-flash',
+          'gemini-2.0-flash-lite',
+          'gemini-1.5-flash',
+          ...savedList.filter(m => m.includes('gemini'))
+        ];
+        const uniqueModels = [...new Set(fallbackCandidates.filter(Boolean))];
+
+        let data = null;
+        let lastErrorText = '';
+
+        for (const modelName of uniqueModels) {
+          try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: systemPrompt }] }],
+                generationConfig: { temperature: 0.3 }
+              })
+            });
+
+            if (response.ok) {
+              data = await response.json();
+              localStorage.setItem('autorent_gemini_model', modelName);
+              break;
+            } else {
+              lastErrorText = `${response.status}: ${await response.text()}`;
+              // Si es 503 (saturado) o 404 (modelo cambiado), intenta inmediatamente con el siguiente modelo de la lista
+            }
+          } catch (netErr) {
+            lastErrorText = netErr.message;
+          }
         }
 
-        let resultText = data.candidates[0].content.parts[0].text;
-        resultText = resultText.replace(/```json/gi, '').replace(/```/g, '').trim();
-        const resultObj = JSON.parse(resultText);
+        if (!data || !data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+          throw new Error(lastErrorText || "No se recibió respuesta de los servidores de Google.");
+        }
 
-        if (resultObj.accion === 'ganancias' && typeof switchAdminTab === 'function') {
+        let resultText = data.candidates[0].content.parts[0].text || '';
+        resultText = resultText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+        let resultObj = { respuesta: resultText, accion: 'ninguna' };
+        try {
+          const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            resultObj = JSON.parse(jsonMatch[0]);
+          }
+        } catch (parseErr) {
+          // Si Gemini respondió texto libre sin JSON, igual lo leemos en voz alta sin dar error
+          resultObj = { respuesta: resultText.replace(/[{}"']/g, ''), accion: 'ninguna' };
+        }
+
+        // 4. Navegación inteligente en pantalla según el tema consultado
+        const act = (resultObj.accion || '').toLowerCase();
+        if ((act === 'dashboard' || act === 'ganancias') && typeof switchAdminTab === 'function') {
           switchAdminTab('tab-dashboard');
           window.scrollTo({ top: 0, behavior: 'smooth' });
-        } else if (resultObj.accion === 'choferes' && typeof switchAdminTab === 'function') {
+        } else if (act === 'flota' && typeof switchAdminTab === 'function') {
+          switchAdminTab('tab-fleet');
+        } else if (act === 'choferes' && typeof switchAdminTab === 'function') {
           switchAdminTab('tab-drivers');
-        } else if (resultObj.accion === 'taller' && typeof switchAdminTab === 'function') {
+        } else if (act === 'taller' && typeof switchAdminTab === 'function') {
           switchAdminTab('tab-dashboard');
           const alertsContainer = document.getElementById('dashboard-maintenance-alerts');
           if (alertsContainer) alertsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (act === 'gastos' && typeof switchAdminTab === 'function') {
+          switchAdminTab('tab-expenses');
+        } else if (act === 'socios' && typeof switchAdminTab === 'function') {
+          switchAdminTab('tab-partners');
+        } else if (act === 'actas' && typeof switchAdminTab === 'function') {
+          switchAdminTab('tab-delivered');
+        } else if (act === 'ajustes' && typeof switchAdminTab === 'function') {
+          switchAdminTab('tab-settings');
         }
 
-        speakTextWithSelectedVoice(resultObj.respuesta);
+        speakTextWithSelectedVoice(resultObj.respuesta || "Listo, aquí tienes la información en pantalla.");
 
       } catch (err) {
-        console.error("Error estricto con Gemini:", err);
-        showToast("Error de Gemini: " + err.message.substring(0, 80), "error");
-        speakTextWithSelectedVoice("Lo siento, tuve un problema leyendo los datos.");
+        console.error("Error en Asistente Gemini:", err);
+        showToast("Aviso de Gemini: " + err.message.substring(0, 80), "error");
+        speakTextWithSelectedVoice("El servidor de Google está ocupado en este segundo, intenta preguntarme de nuevo en unos instantes.");
       }
     }
   </script>

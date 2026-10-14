@@ -8252,6 +8252,139 @@
       renderPartnerViewPayouts(partnerId);
     };
   </script>
+
+  <!-- === MÓDULO SÚPER CEREBRO: GEMINI AI (TOTALMENTE AISLADO Y SEGURO) === -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Inyectar la interfaz gráfica en la pestaña de Ajustes sin romper el HTML existente
+      const checkSettingsTimer = setInterval(() => {
+        const settingsPanel = document.getElementById('panel-tab-settings');
+        if (settingsPanel && !document.getElementById('gemini-injected-block')) {
+          const settingsContainer = settingsPanel.querySelector('.bg-white.rounded-3xl');
+          if (settingsContainer) {
+            const geminiBlock = document.createElement('div');
+            geminiBlock.id = 'gemini-injected-block';
+            geminiBlock.className = 'p-5 bg-purple-50/70 rounded-2xl border border-purple-200 space-y-4 mt-6';
+            geminiBlock.innerHTML = `
+              <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                </div>
+                <div>
+                  <h4 class="text-sm font-black text-purple-950">Súper Cerebro: Inteligencia Artificial Gemini</h4>
+                  <p class="text-[11px] text-purple-800">Conecta la API de Google Gemini para darle razonamiento avanzado a tu Asistente de Voz.</p>
+                </div>
+              </div>
+              <div class="space-y-3 pt-1">
+                <div>
+                  <label class="block text-[11px] font-bold text-purple-900 mb-1">Tu API Key de Gemini (Gratuita en Google AI Studio)</label>
+                  <input type="password" id="cfg-gemini-apikey" placeholder="Ej. AIzaSyB2_..." class="w-full text-xs font-mono p-2.5 rounded-xl border border-purple-300 bg-white shadow-inner">
+                </div>
+                <div class="flex items-center justify-between pt-1 border-t border-purple-200/50">
+                  <p class="text-[10px] font-bold text-purple-700">Si la dejas vacía, se usará el motor básico.</p>
+                  <button type="button" onclick="saveGeminiKey()" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md flex items-center space-x-1.5 transition">
+                    <span>Guardar Clave Gemini</span>
+                  </button>
+                </div>
+              </div>
+            `;
+            settingsContainer.appendChild(geminiBlock);
+            
+            // Cargar clave guardada previamente
+            const savedKey = localStorage.getItem('autorent_gemini_key') || '';
+            document.getElementById('cfg-gemini-apikey').value = savedKey;
+            
+            clearInterval(checkSettingsTimer); // Detener el escaneo una vez inyectado
+          }
+        }
+      }, 1000);
+
+      // Función para guardar la clave en memoria local
+      window.saveGeminiKey = function() {
+        const key = document.getElementById('cfg-gemini-apikey').value.trim();
+        localStorage.setItem('autorent_gemini_key', key);
+        if (typeof showToast === 'function') showToast('✓ Clave de Gemini conectada exitosamente', 'success');
+      };
+
+      // 2. Conectar Gemini al micrófono interceptando el comando de voz
+      if (typeof window.processAIAssistantCommand !== 'undefined') {
+        const originalProcess = window.processAIAssistantCommand; // Guardamos el motor viejo como Plan B
+        
+        window.processAIAssistantCommand = async function(transcript) {
+          const apiKey = localStorage.getItem('autorent_gemini_key');
+          
+          // Si no hay clave, ejecutamos el asistente básico de antes
+          if (!apiKey) {
+            return originalProcess(transcript);
+          }
+
+          if (typeof speakTextWithSelectedVoice === 'function') {
+            speakTextWithSelectedVoice("Analizando tu solicitud...");
+          }
+
+          try {
+            // Recopilar el contexto en tiempo real de tu negocio de forma segura
+            const gananciasHoy = document.getElementById('stat-net-profit') ? document.getElementById('stat-net-profit').textContent : '$0.00';
+            const choferesInfo = (window.appState && window.appState.drivers) ? window.appState.drivers.map(d => {
+              let status = "al día";
+              if(d.balance > 0) status = "debe $" + d.balance;
+              if(d.balance < 0) status = "saldo a favor de +$" + Math.abs(d.balance);
+              return `${d.name} (${status})`;
+            }).join(", ") : "Ninguno";
+            const autosTaller = (window.appState && window.appState.cars) ? window.appState.cars.filter(c => c.status === 'Taller').length : 0;
+
+            const systemPrompt = `Eres el Asistente Inteligente de "AutoRent Pro". 
+Responde de forma concisa, muy humana y útil. NO uses formato markdown (ni asteriscos, ni negritas).
+Tus datos actuales para responder son: 
+- Ganancia Neta Hoy: ${gananciasHoy}. 
+- Autos en taller: ${autosTaller}. 
+- Choferes y sus deudas: ${choferesInfo}.
+
+El usuario te dice: "${transcript}"
+
+Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades:
+- "respuesta": El texto hablado que le dirás al usuario basándote en los datos. (Ej. "Hola jefe, hoy tenemos...")
+- "accion": "ganancias" (si pregunta por dinero), "choferes" (si pregunta por deudas), "taller" (si pregunta por daños), o "ninguna" (si es general).`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: systemPrompt }] }],
+                generationConfig: { temperature: 0.2 } // Nivel bajo de alucinación
+              })
+            });
+
+            if (!response.ok) throw new Error("Error de API");
+            const data = await response.json();
+            
+            let resultText = data.candidates[0].content.parts[0].text;
+            resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+            const resultObj = JSON.parse(resultText);
+
+            // 1. Mover la pantalla si Gemini lo requiere
+            if (resultObj.accion === 'ganancias' && typeof switchAdminTab === 'function') switchAdminTab('tab-dashboard');
+            else if (resultObj.accion === 'choferes' && typeof switchAdminTab === 'function') switchAdminTab('tab-drivers');
+            else if (resultObj.accion === 'taller' && typeof switchAdminTab === 'function') switchAdminTab('tab-dashboard');
+
+            // 2. Hablar la respuesta inteligente de Gemini
+            if (typeof speakTextWithSelectedVoice === 'function') {
+              speakTextWithSelectedVoice(resultObj.respuesta);
+            }
+
+          } catch (err) {
+            console.error("Error conectando a Gemini:", err);
+            if (typeof speakTextWithSelectedVoice === 'function') {
+              speakTextWithSelectedVoice("Hubo un error de conexión con Gemini. Activando el asistente básico.");
+            }
+            originalProcess(transcript); // Si falla el internet o la llave, usa el motor anterior.
+          }
+        };
+      }
+    });
+  </script>
+  <!-- === FIN MÓDULO GEMINI AI === -->
+
 </body>
 </html>
 ```

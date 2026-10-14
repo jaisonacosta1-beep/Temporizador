@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="es" class="h-full bg-slate-50">
 <head>
@@ -116,7 +115,7 @@
 </head>
 <body class="h-full antialiased flex flex-col bg-slate-50 text-slate-800">
 
-  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none max-w-sm w-full px-3"></div>
+  <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col space-y-2 pointer-events-none max-w-sm w-full px-3"></div>
 
   <!-- Barra de Navegación Superior -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
@@ -1968,6 +1967,20 @@
       <form id="form-submit-adddriver" class="space-y-3">
         <input type="hidden" id="edit-driver-id" value="">
         
+        <!-- MEJORA IA: BOTÓN ESCÁNER DE DOCUMENTOS -->
+        <div class="p-3 bg-blue-50 border border-blue-200 border-dashed rounded-2xl flex flex-col items-center justify-center space-y-2 mb-2">
+          <span class="text-xs font-black text-blue-900 flex items-center">
+            <i data-lucide="scan-face" class="w-4 h-4 mr-1.5 text-blue-600"></i> Auto-Completar con IA
+          </span>
+          <p class="text-[10px] text-blue-700 text-center">Sube foto de la licencia o cédula y Gemini llenará el Nombre y Vencimiento por ti.</p>
+          <input type="file" id="input-scan-id" accept="image/*" class="hidden" onchange="scanDriverIdWithAI(event)">
+          <button type="button" onclick="document.getElementById('input-scan-id').click()" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-sm w-full sm:w-auto flex items-center justify-center space-x-1.5 transition">
+            <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+            <span id="ai-scan-btn-text">📸 Escanear Documento</span>
+          </button>
+          <div id="ai-scan-status-msg" class="hidden w-full text-[11px] font-bold p-2 rounded-xl text-center"></div>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">Nombre Completo</label>
@@ -8365,6 +8378,175 @@
           
           errorBox.textContent = "Detalle del error:\n\n" + err.message;
           errorBox.classList.remove('hidden');
+        }
+      };
+
+      // === FUNCIÓN DE ESCÁNER DE IDENTIDAD CON GEMINI VISION ===
+      window.scanDriverIdWithAI = async function(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        const btnText = document.getElementById('ai-scan-btn-text');
+        const statusMsg = document.getElementById('ai-scan-status-msg');
+        const showScanStatus = (msg, type) => {
+          if (statusMsg) {
+            statusMsg.textContent = msg;
+            statusMsg.className = `w-full text-[11px] font-bold p-2 rounded-xl text-center ${
+              type === 'error' ? 'bg-rose-100 text-rose-800 border border-rose-300' :
+              type === 'success' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+              'bg-indigo-100 text-indigo-800 border border-indigo-300'
+            }`;
+            statusMsg.classList.remove('hidden');
+          }
+          if (typeof showToast === 'function') showToast(msg, type === 'error' ? 'error' : type === 'success' ? 'success' : 'info');
+        };
+
+        const apiKey = (localStorage.getItem('autorent_gemini_key') || '').trim().replace(/[\s\n\r]/g, '');
+        if (!apiKey) {
+          showScanStatus('⚠️ Primero guarda tu Clave Gemini en la pestaña Ajustes & Claves', 'error');
+          event.target.value = '';
+          return;
+        }
+
+        btnText.textContent = '⏳ Analizando documento (3-5 seg)...';
+        showScanStatus('⏳ Leyendo datos de la licencia o cédula...', 'info');
+
+        // Helper con límite de tiempo de 10 segundos para que nunca se quede congelado
+        const fetchWithTimeout = async (url, options, timeoutMs = 10000) => {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), timeoutMs);
+          try {
+            return await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+          } finally {
+            clearTimeout(timer);
+          }
+        };
+
+        try {
+          const base64Img = await compressImageFile(file, 800, 800, 0.72);
+          const base64Data = base64Img.split(',')[1];
+          const mimeMatch = base64Img.match(/:(.*?);/);
+          const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+
+          const prompt = 'Analiza esta foto de licencia de conducir o cédula. Extrae el Nombre Completo de la persona y la Fecha de Vencimiento/Expiración (si hay dos fechas como expedición y vencimiento, toma la fecha mayor/futura). Responde SOLO con este JSON exacto sin markdown: {"nombre":"Nombre Apellido","vence":"YYYY-MM-DD"}';
+
+          const savedModel = localStorage.getItem('autorent_gemini_model') || 'gemini-2.0-flash';
+          const visionModels = [...new Set([
+            'gemini-2.0-flash',
+            savedModel,
+            'gemini-2.5-flash',
+            'gemini-2.0-flash-lite'
+          ].filter(Boolean))];
+
+          let parsed = null;
+          let lastErr = '';
+
+          for (const modelName of visionModels) {
+            try {
+              const response = await fetchWithTimeout(
+                `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contents: [{
+                      parts: [
+                        { text: prompt },
+                        { inlineData: { mimeType: mimeType, data: base64Data } }
+                      ]
+                    }],
+                    generationConfig: { temperature: 0.1, maxOutputTokens: 250 }
+                  })
+                },
+                10000
+              );
+
+              if (response.ok) {
+                const data = await response.json();
+                const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+                const combinedText = parts.map(p => p.text || '').join(' ').replace(/```json/gi, '').replace(/```/g, '').trim();
+                const jsonMatch = combinedText.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                  parsed = JSON.parse(jsonMatch[0]);
+                  break;
+                }
+              } else {
+                const errJson = await response.json().catch(() => ({}));
+                lastErr = errJson.error?.message || `HTTP ${response.status}`;
+              }
+            } catch (errNet) {
+              lastErr = errNet.name === 'AbortError' ? 'Tiempo de espera agotado en servidor' : errNet.message;
+            }
+          }
+
+          // Respaldo OCR local inmediato si el servidor de Google está saturado
+          if (!parsed && typeof Tesseract !== 'undefined') {
+            showScanStatus('⚡ Usando lector local de respaldo...', 'info');
+            const worker = (typeof getFastOcrWorker === 'function') ? await getFastOcrWorker() : null;
+            const ocrRes = worker ? await worker.recognize(base64Img) : await Tesseract.recognize(base64Img, 'spa');
+            const rawTxt = (ocrRes && ocrRes.data && ocrRes.data.text) ? ocrRes.data.text : '';
+            const dateMatches = [...rawTxt.matchAll(/\b(\d{2})[\/\-](\d{2})[\/\-](20\d{2})\b/g)];
+            let bestDate = '';
+            if (dateMatches.length > 0) {
+              const lastD = dateMatches[dateMatches.length - 1];
+              bestDate = `${lastD[3]}-${lastD[2]}-${lastD[1]}`;
+            }
+            const lines = rawTxt.split('\n').map(l => l.trim()).filter(l => /^[A-ZÁÉÍÓÚÑ\s]{6,38}$/.test(l) && !/REPUBLICA|PANAMA|LICENCIA|TRIBUNAL|AUTORIDAD|TRANSITO|NACIONAL|FECHA|TIPO|SEXO/i.test(l));
+            parsed = {
+              nombre: lines[0] || '',
+              vence: bestDate
+            };
+          }
+
+          if (!parsed) {
+            throw new Error(lastErr || 'No se recibió respuesta del escáner');
+          }
+
+          // Normalizar fecha si vino como DD/MM/YYYY o DD-MM-YYYY
+          let cleanDate = String(parsed.vence || '').trim();
+          const dmyMatch = cleanDate.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+          if (dmyMatch) {
+            cleanDate = `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
+          }
+
+          let filledFields = [];
+          if (parsed.nombre && String(parsed.nombre).trim()) {
+            const cleanName = String(parsed.nombre).trim();
+            const nameInput = document.getElementById('newdriver-name');
+            if (nameInput) {
+              nameInput.value = cleanName;
+              nameInput.classList.add('ring-2', 'ring-emerald-500');
+              setTimeout(() => nameInput.classList.remove('ring-2', 'ring-emerald-500'), 2500);
+            }
+            const userField = document.getElementById('newdriver-username');
+            if (userField && !userField.value.trim()) {
+              userField.value = cleanName.split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+            }
+            filledFields.push(`Nombre: ${cleanName}`);
+          }
+
+          if (cleanDate && /^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+            const licInput = document.getElementById('newdriver-license-expiry');
+            if (licInput) {
+              licInput.value = cleanDate;
+              licInput.classList.add('ring-2', 'ring-emerald-500');
+              setTimeout(() => licInput.classList.remove('ring-2', 'ring-emerald-500'), 2500);
+            }
+            filledFields.push(`Vence: ${cleanDate}`);
+          }
+
+          if (filledFields.length > 0) {
+            showScanStatus(`✓ Auto-completado: ${filledFields.join(' · ')}`, 'success');
+          } else {
+            showScanStatus('⚠️ No se distinguieron el nombre o fecha. Intenta con una foto más enfocada.', 'error');
+          }
+
+        } catch (e) {
+          console.error(e);
+          showScanStatus('❌ Error al escanear: ' + e.message.substring(0, 80), 'error');
+        } finally {
+          btnText.textContent = '📸 Escanear Documento';
+          event.target.value = '';
         }
       };
     });

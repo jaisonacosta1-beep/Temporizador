@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="es" class="h-full bg-slate-50">
 <head>
@@ -2470,8 +2471,25 @@
     <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a.75.75 0 0 1 .74.67l.01.08 1.14 8.08 8.08 1.14a.75.75 0 0 1 .08 1.48l-.08.01-8.08 1.14-1.14 8.08a.75.75 0 0 1-1.48.08l-.01-.08-1.14-8.08-8.08-1.14a.75.75 0 0 1-.08-1.48l.08-.01 8.08-1.14 1.14-8.08a.75.75 0 0 1 .67-.74Z"/></svg>
   </button>
 
+  <!-- Tarjeta Flotante de Respuesta Visual de Gemini -->
+  <div id="ai-response-card" class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[105] hidden bg-slate-900/95 backdrop-blur-md text-white p-4 rounded-3xl shadow-2xl border border-purple-500/40 transition-all">
+    <div class="flex items-start justify-between gap-2 border-b border-white/10 pb-2.5 mb-2.5">
+      <div class="flex items-center space-x-2">
+        <div class="w-7 h-7 rounded-xl bg-gradient-to-tr from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a.75.75 0 0 1 .74.67l.01.08 1.14 8.08 8.08 1.14a.75.75 0 0 1 .08 1.48l-.08.01-8.08 1.14-1.14 8.08a.75.75 0 0 1-1.48.08l-.01-.08-1.14-8.08-8.08-1.14a.75.75 0 0 1-.08-1.48l.08-.01 8.08-1.14 1.14-8.08a.75.75 0 0 1 .67-.74Z"/></svg>
+        </div>
+        <span class="text-xs font-black tracking-wide text-purple-300 uppercase" id="ai-response-title">Súper Cerebro Gemini</span>
+      </div>
+      <div class="flex items-center space-x-1">
+        <button type="button" onclick="replayLastGeminiSpeech()" class="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-bold text-indigo-200" title="Volver a escuchar">🔊 Escuchar</button>
+        <button type="button" onclick="closeGeminiResponseCard()" class="p-1 rounded-lg bg-white/10 hover:bg-rose-500/30 text-slate-300 hover:text-white text-xs font-black">✕</button>
+      </div>
+    </div>
+    <p id="ai-response-body" class="text-xs sm:text-sm text-slate-100 leading-relaxed font-medium whitespace-pre-line"></p>
+  </div>
+
   <!-- Overlay de Escucha Activa -->
-  <div id="ai-listening-overlay" class="fixed inset-0 bg-slate-900/85 backdrop-blur-md z-[110] hidden flex-col items-center justify-center text-white transition-opacity">
+  <div id="ai-listening-overlay" class="fixed inset-0 bg-slate-900/85 backdrop-blur-md z-[110] hidden flex flex-col items-center justify-center text-white p-4 transition-opacity">
     <div class="relative flex items-center justify-center mb-6">
       <div class="absolute w-32 h-32 bg-gradient-to-tr from-blue-500 via-purple-500 to-pink-500 rounded-full opacity-40 animate-ping"></div>
       <div class="absolute w-40 h-40 bg-gradient-to-tr from-blue-400 via-purple-400 to-pink-400 rounded-full opacity-20 animate-pulse"></div>
@@ -2479,11 +2497,20 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a.75.75 0 0 1 .74.67l.01.08 1.14 8.08 8.08 1.14a.75.75 0 0 1 .08 1.48l-.08.01-8.08 1.14-1.14 8.08a.75.75 0 0 1-1.48.08l-.01-.08-1.14-8.08-8.08-1.14a.75.75 0 0 1-.08-1.48l.08-.01 8.08-1.14 1.14-8.08a.75.75 0 0 1 .67-.74Z"/></svg>
       </div>
     </div>
-    <h2 class="text-3xl font-black mb-2 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Gemini Escuchando...</h2>
-    <p id="ai-transcript-text" class="text-indigo-200 text-lg font-medium text-center max-w-md">
-      Prueba decir: <br><span class="font-bold text-white">"Resumen de ganancias"</span> o <span class="font-bold text-white">"Búscame al chofer..."</span>
+    <h2 class="text-2xl sm:text-3xl font-black mb-2 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Gemini Escuchando...</h2>
+    <p id="ai-transcript-text" class="text-indigo-200 text-base sm:text-lg font-medium text-center max-w-md px-3">
+      Habla ahora o escribe tu pregunta abajo:
     </p>
-    <button onclick="stopAIAssistant()" class="mt-10 px-6 py-2.5 rounded-full border border-white/20 bg-white/10 hover:bg-white/20 text-white font-bold text-sm shadow-lg backdrop-blur-sm transition-all">
+
+    <!-- Barra para escribir o enviar manualmente si el micrófono del celular se corta -->
+    <div class="w-full max-w-md mt-6 flex items-center gap-2 bg-white/10 p-2 rounded-2xl border border-white/20">
+      <input type="text" id="ai-manual-input" placeholder="O escribe aquí (ej. ¿Qué puedes hacer?)" class="flex-1 bg-transparent text-white placeholder-indigo-300 text-xs sm:text-sm font-semibold px-3 py-2 focus:outline-none">
+      <button type="button" onclick="submitManualGeminiQuestion()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-black text-xs shadow-md whitespace-nowrap">
+        Enviar ➤
+      </button>
+    </div>
+
+    <button onclick="stopAIAssistant(true)" class="mt-6 px-6 py-2.5 rounded-full border border-white/20 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm shadow-lg backdrop-blur-sm transition-all">
       Cancelar
     </button>
   </div>
@@ -2491,6 +2518,9 @@
   <script>
     // Lógica del Asistente de Voz (Reconocimiento y Acción Visual)
     let aiSpeechRecognition = null;
+    let lastCapturedVoiceText = '';
+    let commandAlreadyDispatched = false;
+    let lastGeminiSpokenAnswer = '';
 
     // Asegurar que el botón del asistente siempre sea visible si el Admin está conectado
     setInterval(() => {
@@ -2505,6 +2535,57 @@
       }
     }, 500);
 
+    function showGeminiResponseCard(title, message, isLoading = false) {
+      const card = document.getElementById('ai-response-card');
+      const titleEl = document.getElementById('ai-response-title');
+      const bodyEl = document.getElementById('ai-response-body');
+      if (!card || !titleEl || !bodyEl) return;
+      titleEl.textContent = title || 'Súper Cerebro Gemini';
+      bodyEl.textContent = message || '';
+      bodyEl.className = isLoading
+        ? 'text-xs sm:text-sm text-indigo-200 leading-relaxed font-bold animate-pulse'
+        : 'text-xs sm:text-sm text-slate-100 leading-relaxed font-medium whitespace-pre-line';
+      card.classList.remove('hidden');
+    }
+
+    function closeGeminiResponseCard() {
+      const card = document.getElementById('ai-response-card');
+      if (card) card.classList.add('hidden');
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    }
+
+    function replayLastGeminiSpeech() {
+      if (lastGeminiSpokenAnswer) {
+        speakTextWithSelectedVoice(lastGeminiSpokenAnswer);
+      }
+    }
+
+    function submitManualGeminiQuestion() {
+      const input = document.getElementById('ai-manual-input');
+      const text = input ? input.value.trim() : '';
+      const finalQuery = text || lastCapturedVoiceText.trim();
+      if (!finalQuery) {
+        showToast('Habla al micrófono o escribe tu consulta primero', 'warning');
+        return;
+      }
+      commandAlreadyDispatched = true;
+      if (input) input.value = '';
+      stopAIAssistant(true);
+      processAIAssistantCommand(finalQuery);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const manualInput = document.getElementById('ai-manual-input');
+      if (manualInput) {
+        manualInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            submitManualGeminiQuestion();
+          }
+        });
+      }
+    });
+
     function initSpeechRecognition() {
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         return false;
@@ -2513,7 +2594,7 @@
       aiSpeechRecognition = new SpeechReg();
       aiSpeechRecognition.continuous = false;
       aiSpeechRecognition.interimResults = true;
-      aiSpeechRecognition.lang = 'es-PA'; // Español de Panamá / General
+      aiSpeechRecognition.lang = 'es-PA';
 
       aiSpeechRecognition.onresult = (event) => {
         let interimTranscript = '';
@@ -2526,133 +2607,81 @@
           }
         }
         
-        const displayText = finalTranscript || interimTranscript;
-        document.getElementById('ai-transcript-text').innerHTML = `<span class="text-white font-black text-xl">"${displayText}"</span>`;
+        const displayText = (finalTranscript || interimTranscript || '').trim();
+        if (displayText) {
+          lastCapturedVoiceText = displayText;
+          document.getElementById('ai-transcript-text').innerHTML = `<span class="text-white font-black text-xl">"${displayText}"</span>`;
+          const manualInput = document.getElementById('ai-manual-input');
+          if (manualInput) manualInput.value = displayText;
+        }
 
-        if (finalTranscript) {
+        if (finalTranscript && !commandAlreadyDispatched) {
+          commandAlreadyDispatched = true;
           setTimeout(() => {
-            stopAIAssistant();
-            processAIAssistantCommand(finalTranscript);
-          }, 600);
+            stopAIAssistant(true);
+            processAIAssistantCommand(finalTranscript.trim());
+          }, 450);
+        }
+      };
+
+      // En celulares, a veces el micrófono se cierra en onend sin haber disparado isFinal: aquí lo rescatamos siempre
+      aiSpeechRecognition.onend = () => {
+        const overlay = document.getElementById('ai-listening-overlay');
+        const isOverlayOpen = overlay && !overlay.classList.contains('hidden');
+        if (!commandAlreadyDispatched && lastCapturedVoiceText.trim().length > 1 && isOverlayOpen) {
+          commandAlreadyDispatched = true;
+          const captured = lastCapturedVoiceText.trim();
+          stopAIAssistant(true);
+          processAIAssistantCommand(captured);
         }
       };
 
       aiSpeechRecognition.onerror = (event) => {
-        stopAIAssistant();
-        if (event.error !== 'aborted') {
-          showToast('No pude escucharte bien. Intenta de nuevo.', 'warning');
+        if (event.error !== 'aborted' && event.error !== 'no-speech') {
+          showToast('Micrófono ocupado o sin permiso. Puedes escribir tu pregunta en la barra.', 'warning');
         }
       };
       return true;
     }
 
     function startAIAssistant() {
-      if (!aiSpeechRecognition) {
-        const supported = initSpeechRecognition();
-        if (!supported) {
-          showToast('Tu navegador no soporta el reconocimiento de voz por micrófono. Usa Chrome o Safari.', 'error');
-          return;
-        }
+      lastCapturedVoiceText = '';
+      commandAlreadyDispatched = false;
+
+      // Desbloquear el canal de voz del teléfono inmediatamente al tocar el botón
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+          const unlockUtter = new SpeechSynthesisUtterance('');
+          unlockUtter.volume = 0;
+          window.speechSynthesis.speak(unlockUtter);
+        } catch (e) {}
       }
-      
-      // Detener cualquier voz que esté hablando
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
 
       document.getElementById('ai-listening-overlay').classList.remove('hidden');
-      document.getElementById('ai-transcript-text').innerHTML = `Prueba decir: <br><span class="font-bold text-white">"Resumen de dinero"</span> o <span class="font-bold text-white">"¿Autos en taller?"</span>`;
+      document.getElementById('ai-transcript-text').innerHTML = `Prueba decir o escribir: <br><span class="font-bold text-white">"¿Qué puedes hacer?"</span> o <span class="font-bold text-white">"Resumen del negocio"</span>`;
+      const manualInput = document.getElementById('ai-manual-input');
+      if (manualInput) manualInput.value = '';
+
+      if (!aiSpeechRecognition) {
+        initSpeechRecognition();
+      }
       
-      try {
-        aiSpeechRecognition.start();
-        playAdminAlertTone('driverNotes'); // Un tonito agradable para saber que empezó a escuchar
-      } catch(e) {}
+      if (aiSpeechRecognition) {
+        try {
+          aiSpeechRecognition.start();
+          playAdminAlertTone('driverNotes');
+        } catch(e) {}
+      }
     }
 
-    function stopAIAssistant() {
+    function stopAIAssistant(forceCancel = false) {
+      if (forceCancel) {
+        lastCapturedVoiceText = '';
+      }
       document.getElementById('ai-listening-overlay').classList.add('hidden');
       if (aiSpeechRecognition) {
         try { aiSpeechRecognition.stop(); } catch(e) {}
-      }
-    }
-
-    // EL "CEREBRO" DEL ASISTENTE: Entiende y ejecuta acciones visuales en pantalla
-    async function processAIAssistantCommand(transcript) {
-      // 100% MOTOR AVANZADO GEMINI (Sin respaldos viejos)
-      const apiKey = localStorage.getItem('autorent_gemini_key');
-      
-      if (!apiKey || apiKey.trim() === '') {
-        speakTextWithSelectedVoice("Hola. Para poder entenderte, necesitas poner tu clave de Gemini en la sección de ajustes.");
-        return;
-      }
-
-      try {
-        // Recopilamos la información real de tu empresa para que Gemini la sepa
-        const gananciasHoy = document.getElementById('stat-net-profit') ? document.getElementById('stat-net-profit').textContent : '$0.00';
-        const autosTaller = appState.cars ? appState.cars.filter(c => c.status === 'Taller').length : 0;
-        let choferesInfo = "Ninguno";
-        if (appState.drivers && appState.drivers.length > 0) {
-          choferesInfo = appState.drivers.map(d => {
-            let status = "al día";
-            if (d.balance > 0) status = "debe $" + d.balance;
-            if (d.balance < 0) status = "tiene saldo a favor de +$" + Math.abs(d.balance);
-            return `${d.name} (${status})`;
-          }).join(", ");
-        }
-
-        const systemPrompt = `Eres el Asistente Inteligente de "AutoRent Pro".
-Datos de la empresa: Ganancia Neta Hoy: ${gananciasHoy}. Autos en taller: ${autosTaller}. Choferes y sus estados: ${choferesInfo}.
-El usuario te dice: "${transcript}"
-
-Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN comillas invertidas):
-{"respuesta": "texto humano y natural que le dirás al usuario", "accion": "ganancias" | "choferes" | "taller" | "ninguna"}`;
-
-        // FORZAMOS EL MODELO ESTABLE (gemini-1.5-flash) para evitar el error 404 del modelo 2.5 experimental
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: systemPrompt }] }],
-            generationConfig: { 
-              temperature: 0.2
-            }
-          })
-        });
-
-        if (!response.ok) {
-          const errText = await response.text();
-          throw new Error("Rechazo de Google: " + response.status + " " + errText);
-        }
-
-        const data = await response.json();
-        
-        if (!data.candidates || !data.candidates[0].content) {
-            throw new Error("Respuesta bloqueada por Google (Seguridad) o vacía.");
-        }
-
-        let resultText = data.candidates[0].content.parts[0].text;
-        
-        // Filtro agresivo para limpiar cualquier formato Markdown que envíe Gemini y dejar solo el JSON puro
-        resultText = resultText.replace(/```json/gi, '').replace(/```/g, '').trim();
-        const resultObj = JSON.parse(resultText);
-
-        // Ejecutar acciones visuales en pantalla según lo que Gemini decida
-        if (resultObj.accion === 'ganancias' && typeof switchAdminTab === 'function') {
-          switchAdminTab('tab-dashboard');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        } else if (resultObj.accion === 'choferes' && typeof switchAdminTab === 'function') {
-          switchAdminTab('tab-drivers');
-        } else if (resultObj.accion === 'taller' && typeof switchAdminTab === 'function') {
-          switchAdminTab('tab-dashboard');
-          const alertsContainer = document.getElementById('dashboard-maintenance-alerts');
-          if (alertsContainer) alertsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        // Hablar la respuesta inteligente de Gemini
-        speakTextWithSelectedVoice(resultObj.respuesta);
-
-      } catch (err) {
-        console.error("Error estricto con Gemini:", err);
-        showToast("Error de Gemini: " + err.message.substring(0, 80), "error");
-        speakTextWithSelectedVoice("Lo siento, tuve un problema leyendo los datos.");
       }
     }
   </script>
@@ -8342,12 +8371,20 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN
 
     // Función avanzada que conecta toda la base de datos de AutoRent Pro con Gemini y evita fallos 503
     async function processAIAssistantCommand(transcript) {
+      const cleanTranscript = String(transcript || '').trim();
+      if (!cleanTranscript) return;
+
       const apiKey = (localStorage.getItem('autorent_gemini_key') || '').trim().replace(/[\s\n\r]/g, '');
       
       if (!apiKey) {
-        speakTextWithSelectedVoice("Hola. Para poder responderte, primero guarda tu clave de Gemini en la pestaña de ajustes.");
+        const noKeyMsg = "Hola. Para poder responderte, primero pega y guarda tu clave API de Gemini en la pestaña Ajustes y Claves.";
+        showGeminiResponseCard("Falta Clave Gemini", noKeyMsg, false);
+        speakTextWithSelectedVoice(noKeyMsg);
         return;
       }
+
+      // Mostrar de inmediato en pantalla que Gemini recibió la orden y está pensando
+      showGeminiResponseCard(`Tú: "${cleanTranscript}"`, "✨ Gemini está analizando los datos de tu flota...", true);
 
       try {
         // 1. Recopilamos TODA la radiografía del sistema en tiempo real sin alterar los datos
@@ -8355,7 +8392,6 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN
         const totalGastado = document.getElementById('stat-expenses') ? document.getElementById('stat-expenses').textContent : '$0.00';
         const gananciaNeta = document.getElementById('stat-net-profit') ? document.getElementById('stat-net-profit').textContent : '$0.00';
 
-        // Detalle completo de Choferes
         const choferesDetalle = (appState.drivers || []).map(d => {
           const car = typeof getDriverAssignedCar === 'function' ? getDriverAssignedCar(d.id) : null;
           const bal = Number(d.balance) || 0;
@@ -8366,7 +8402,6 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN
           return `- ${d.name}: ${estadoCuenta}, Cuota diaria $${d.dailyRate || 25}, Auto: ${car ? car.model + ' Placa ' + car.plate : 'Sin auto'}, Tel: ${d.phone || 'N/A'}${d.isRentToOwn ? ', Plan Opción a Compra (' + (d.rtoPaidDays || 0) + ' cuotas pagadas)' : ''}`;
         }).join('\n') || 'Sin choferes registrados.';
 
-        // Detalle completo de Vehículos y Mantenimiento
         const autosDetalle = (appState.cars || []).map(c => {
           const nextOil = (Number(c.oilLastKm) || 0) + (Number(c.oilInterval) || 5000);
           const remKm = nextOil - (Number(c.km) || 0);
@@ -8375,19 +8410,16 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN
           return `- ${c.model} (Placa ${c.plate}, Año ${c.year || 2023}): Estado ${c.status}, Odómetro ${c.km || 0} Km, Faltan ${remKm} Km para cambio de aceite, Chofer: ${drv ? drv.name : 'Disponible'}, Socio dueño: ${part ? part.name : 'Propio'}, Seguro vence: ${c.insuranceExpiry || 'N/A'}`;
         }).join('\n') || 'Sin vehículos registrados.';
 
-        // Pagos pendientes y recientes
         const pagosPendientes = (appState.payments || []).filter(p => !p.status || p.status === 'Pendiente');
         const resumenPendientes = pagosPendientes.length > 0
           ? pagosPendientes.map(p => `${p.driverName || 'Chofer'} reportó $${Number(p.amount).toFixed(2)} por ${p.method} (${p.date})`).join('; ')
           : 'No hay pagos pendientes por aprobar en bandeja.';
 
-        // Gastos de taller recientes
         const gastosRecientes = (appState.expenses || []).slice(0, 8).map(e => {
           const c = (appState.cars || []).find(x => x.id === e.carId);
           return `${e.category} en ${c ? c.plate : 'Auto'}: $${Number(e.amount).toFixed(2)} (${e.notes || ''}, ${e.date})`;
         }).join('; ') || 'Sin gastos registrados.';
 
-        // Socios y liquidaciones
         const sociosDetalle = (appState.partners || []).map(p => {
           if (typeof calculatePartnerSettlement === 'function') {
             const s = calculatePartnerSettlement(p.id);
@@ -8396,7 +8428,6 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN
           return `- Socio ${p.name}`;
         }).join('\n') || 'Sin socios registrados.';
 
-        // 2. Instrucciones completas para que Gemini razone con inteligencia total
         const systemPrompt = `Eres el Gerente Virtual e Inteligencia Artificial oficial de "${brandingConfig.companyName || 'AutoRent Pro'}", un sistema avanzado de control de flota y alquiler de autos.
 
 CAPACIDADES QUE TIENES (para cuando el usuario te pregunte "¿Qué puedes hacer?" o "¿En qué me ayudas?"):
@@ -8416,22 +8447,22 @@ ${autosDetalle}
 * Socios y Liquidaciones:
 ${sociosDetalle}
 
-PREGUNTA O COMANDO DEL USUARIO: "${transcript}"
+PREGUNTA O COMANDO DEL USUARIO: "${cleanTranscript}"
 
 INSTRUCCIÓN DE RESPUESTA:
-Responde de forma conversacional, clara, inteligente, directa y natural en español (pensada para ser leída por voz en 2 a 4 oraciones concisas).
+Responde de forma conversacional, clara, inteligente, directa y natural en español (en 2 a 4 oraciones concisas).
 Devuelve ÚNICAMENTE un objeto JSON válido con estas 2 llaves (sin bloques markdown ni comillas triples):
 {"respuesta": "tu respuesta hablada aquí", "accion": "dashboard" | "flota" | "choferes" | "taller" | "gastos" | "socios" | "actas" | "ajustes" | "ninguna"}`;
 
-        // 3. Lista de modelos con respaldo automático anti-error 503 y 404
-        const savedModel = localStorage.getItem('autorent_gemini_model') || 'gemini-2.5-flash';
+        const savedModel = localStorage.getItem('autorent_gemini_model') || 'gemini-2.0-flash';
         let savedList = [];
         try { savedList = JSON.parse(localStorage.getItem('autorent_gemini_models_list') || '[]'); } catch(e) {}
         
+        // Ponemos gemini-2.0-flash y 1.5-flash primero para evitar la saturación (503) de 2.5-flash
         const fallbackCandidates = [
+          'gemini-2.0-flash',
           savedModel,
           'gemini-2.5-flash',
-          'gemini-2.0-flash',
           'gemini-2.0-flash-lite',
           'gemini-1.5-flash',
           ...savedList.filter(m => m.includes('gemini'))
@@ -8458,7 +8489,6 @@ Devuelve ÚNICAMENTE un objeto JSON válido con estas 2 llaves (sin bloques mark
               break;
             } else {
               lastErrorText = `${response.status}: ${await response.text()}`;
-              // Si es 503 (saturado) o 404 (modelo cambiado), intenta inmediatamente con el siguiente modelo de la lista
             }
           } catch (netErr) {
             lastErrorText = netErr.message;
@@ -8466,7 +8496,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido con estas 2 llaves (sin bloques mark
         }
 
         if (!data || !data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-          throw new Error(lastErrorText || "No se recibió respuesta de los servidores de Google.");
+          throw new Error(lastErrorText || "No se recibió respuesta de Google.");
         }
 
         let resultText = data.candidates[0].content.parts[0].text || '';
@@ -8479,11 +8509,16 @@ Devuelve ÚNICAMENTE un objeto JSON válido con estas 2 llaves (sin bloques mark
             resultObj = JSON.parse(jsonMatch[0]);
           }
         } catch (parseErr) {
-          // Si Gemini respondió texto libre sin JSON, igual lo leemos en voz alta sin dar error
           resultObj = { respuesta: resultText.replace(/[{}"']/g, ''), accion: 'ninguna' };
         }
 
-        // 4. Navegación inteligente en pantalla según el tema consultado
+        const finalAnswer = resultObj.respuesta || "Listo, aquí tienes la información en pantalla.";
+        lastGeminiSpokenAnswer = finalAnswer;
+
+        // Mostrar la respuesta escrita en la tarjeta flotante de pantalla
+        showGeminiResponseCard(`Gemini respondió:`, finalAnswer, false);
+
+        // Navegar si corresponde
         const act = (resultObj.accion || '').toLowerCase();
         if ((act === 'dashboard' || act === 'ganancias') && typeof switchAdminTab === 'function') {
           switchAdminTab('tab-dashboard');
@@ -8506,12 +8541,14 @@ Devuelve ÚNICAMENTE un objeto JSON válido con estas 2 llaves (sin bloques mark
           switchAdminTab('tab-settings');
         }
 
-        speakTextWithSelectedVoice(resultObj.respuesta || "Listo, aquí tienes la información en pantalla.");
+        // Hablar la respuesta
+        speakTextWithSelectedVoice(finalAnswer);
 
       } catch (err) {
         console.error("Error en Asistente Gemini:", err);
-        showToast("Aviso de Gemini: " + err.message.substring(0, 80), "error");
-        speakTextWithSelectedVoice("El servidor de Google está ocupado en este segundo, intenta preguntarme de nuevo en unos instantes.");
+        const errMsg = "El servidor de Google está ocupado en este momento. Intenta de nuevo en unos segundos.";
+        showGeminiResponseCard("Aviso de Conexión", errMsg + "\n(" + err.message.substring(0, 90) + ")", false);
+        speakTextWithSelectedVoice(errMsg);
       }
     }
   </script>

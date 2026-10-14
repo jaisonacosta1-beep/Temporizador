@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="es" class="h-full bg-slate-50">
 <head>
@@ -2599,29 +2598,21 @@
           }).join(", ");
         }
 
-        const systemPrompt = `Eres el Asistente Inteligente de la empresa "AutoRent Pro".
-Responde de forma natural, muy humana, conversacional y directo al punto. NO uses asteriscos ni formatos raros.
-Tus datos actuales en la base de datos: 
-- Ganancia Neta Hoy: ${gananciasHoy}. 
-- Autos en taller: ${autosTaller}. 
-- Choferes y sus estados de cuenta: ${choferesInfo}.
-
+        const systemPrompt = `Eres el Asistente Inteligente de "AutoRent Pro".
+Datos de la empresa: Ganancia Neta Hoy: ${gananciasHoy}. Autos en taller: ${autosTaller}. Choferes y sus estados: ${choferesInfo}.
 El usuario te dice: "${transcript}"
 
-Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades:
-- "respuesta": El texto hablado humano que le dirás al usuario analizando los datos que te di.
-- "accion": "ganancias" (si pregunta por dinero), "choferes" (si pregunta por deudas o nombres), "taller" (si pregunta por autos dañados), o "ninguna".`;
+Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN comillas invertidas):
+{"respuesta": "texto humano y natural que le dirás al usuario", "accion": "ganancias" | "choferes" | "taller" | "ninguna"}`;
 
-        let modeloGuardado = localStorage.getItem('autorent_gemini_model') || 'gemini-1.5-flash';
-        
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modeloGuardado}:generateContent?key=${apiKey.trim()}`, {
+        // FORZAMOS EL MODELO ESTABLE (gemini-1.5-flash) para evitar el error 404 del modelo 2.5 experimental
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: systemPrompt }] }],
             generationConfig: { 
-              temperature: 0.2, // Nivel bajo de creatividad para que sea exacto con el dinero
-              responseMimeType: "application/json" // OBLIGA A GEMINI A NO USAR FORMATOS RAROS
+              temperature: 0.2
             }
           })
         });
@@ -2638,6 +2629,9 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades:
         }
 
         let resultText = data.candidates[0].content.parts[0].text;
+        
+        // Filtro agresivo para limpiar cualquier formato Markdown que envíe Gemini y dejar solo el JSON puro
+        resultText = resultText.replace(/```json/gi, '').replace(/```/g, '').trim();
         const resultObj = JSON.parse(resultText);
 
         // Ejecutar acciones visuales en pantalla según lo que Gemini decida
@@ -2658,7 +2652,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades:
       } catch (err) {
         console.error("Error estricto con Gemini:", err);
         showToast("Error de Gemini: " + err.message.substring(0, 80), "error");
-        speakTextWithSelectedVoice("Hubo un error técnico. Revisa el letrero rojo en tu pantalla.");
+        speakTextWithSelectedVoice("Lo siento, tuve un problema leyendo los datos.");
       }
     }
   </script>

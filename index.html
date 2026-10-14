@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="es" class="h-full bg-slate-50">
 <head>
@@ -8276,24 +8277,21 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN
             `;
             settingsContainer.appendChild(geminiBlock);
             
-            // Cargar clave guardada previamente
             const savedKey = localStorage.getItem('autorent_gemini_key') || '';
             document.getElementById('cfg-gemini-apikey').value = savedKey;
             
-            clearInterval(checkSettingsTimer); // Detener el escaneo una vez inyectado
+            clearInterval(checkSettingsTimer);
           }
         }
       }, 1000);
 
-      // Función para guardar la clave en memoria local
       window.saveGeminiKey = function() {
         const keyInput = document.getElementById('cfg-gemini-apikey').value.trim();
-        const key = keyInput.replace(/[\s\n\r]/g, ''); // Eliminar espacios invisibles o saltos
+        const key = keyInput.replace(/[\s\n\r]/g, '');
         localStorage.setItem('autorent_gemini_key', key);
         if (typeof showToast === 'function') showToast('✓ Clave de Gemini guardada', 'success');
       };
 
-      // Función para probar la conexión
       window.testGeminiConnection = async function() {
         const key = document.getElementById('cfg-gemini-apikey').value.trim().replace(/[\s\n\r]/g, '');
         const badge = document.getElementById('gemini-status-badge');
@@ -8308,37 +8306,29 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN
         }
 
         badge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-100 text-amber-700 border border-amber-300 badge-pulse';
-        badge.textContent = 'Consultando modelos en Google...';
+        badge.textContent = 'Verificando con Google...';
 
         try {
-          // 1. Pedimos a Google la lista de modelos permitidos para tu clave exacta
-          const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+          // Usamos el modelo estándar y estable gemini-3.5-flash directamente
+          const testRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: "Hola" }] }]
+            })
+          });
           
-          if (!modelsRes.ok) {
-            const errorText = await modelsRes.text();
+          if (!testRes.ok) {
+            const errorText = await testRes.text();
             throw new Error(errorText);
           }
 
-          const modelsData = await modelsRes.json();
-          
-          // 2. Filtramos para elegir el mejor modelo inteligente disponible automáticamente
-          let bestModel = null;
-          if (modelsData && modelsData.models) {
-            const valid = modelsData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'));
-            bestModel = valid.find(m => m.name.includes('flash')) || valid[0];
-          }
+          localStorage.setItem('autorent_gemini_model', 'gemini-3.5-flash');
+          localStorage.setItem('autorent_gemini_key', key);
 
-          if (bestModel) {
-            const modelCodeName = bestModel.name.replace('models/', '');
-            localStorage.setItem('autorent_gemini_model', modelCodeName);
-            localStorage.setItem('autorent_gemini_key', key);
-
-            badge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 border border-emerald-300';
-            badge.innerHTML = '🟢 En Línea (' + modelCodeName + ')';
-            if (typeof showToast === 'function') showToast('¡Conexión Perfecta! Google ha asignado el modelo: ' + modelCodeName, 'success');
-          } else {
-            throw new Error("Tu clave es válida, pero Google no devolvió modelos compatibles.");
-          }
+          badge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 border border-emerald-300';
+          badge.innerHTML = '🟢 En Línea (gemini-3.5-flash)';
+          if (typeof showToast === 'function') showToast('¡Conexión Perfecta con Gemini!', 'success');
         } catch (err) {
           console.error(err);
           badge.className = 'px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-300';
@@ -8349,6 +8339,81 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN
         }
       };
     });
+
+    // Actualizamos también la función que procesa los comandos de voz en el asistente
+    async function processAIAssistantCommand(transcript) {
+      const apiKey = localStorage.getItem('autorent_gemini_key');
+      
+      if (!apiKey || apiKey.trim() === '') {
+        speakTextWithSelectedVoice("Hola. Para poder entenderte, necesitas poner tu clave de Gemini en la sección de ajustes.");
+        return;
+      }
+
+      try {
+        const gananciasHoy = document.getElementById('stat-net-profit') ? document.getElementById('stat-net-profit').textContent : '$0.00';
+        const autosTaller = appState.cars ? appState.cars.filter(c => c.status === 'Taller').length : 0;
+        let choferesInfo = "Ninguno";
+        if (appState.drivers && appState.drivers.length > 0) {
+          choferesInfo = appState.drivers.map(d => {
+            let status = "al día";
+            if (d.balance > 0) status = "debe $" + d.balance;
+            if (d.balance < 0) status = "tiene saldo a favor de +$" + Math.abs(d.balance);
+            return `${d.name} (${status})`;
+          }).join(", ");
+        }
+
+        const systemPrompt = `Eres el Asistente Inteligente de "AutoRent Pro".
+Datos de la empresa: Ganancia Neta Hoy: ${gananciasHoy}. Autos en taller: ${autosTaller}. Choferes y sus estados: ${choferesInfo}.
+El usuario te dice: "${transcript}"
+
+Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades (SIN markdown, SIN comillas invertidas):
+{"respuesta": "texto humano y natural que le dirás al usuario", "accion": "ganancias" | "choferes" | "taller" | "ninguna"}`;
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey.trim()}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: systemPrompt }] }],
+            generationConfig: { 
+              temperature: 0.2
+            }
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error("Rechazo de Google: " + response.status + " " + errText);
+        }
+
+        const data = await response.json();
+        
+        if (!data.candidates || !data.candidates[0].content) {
+            throw new Error("Respuesta bloqueada por Google (Seguridad) o vacía.");
+        }
+
+        let resultText = data.candidates[0].content.parts[0].text;
+        resultText = resultText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const resultObj = JSON.parse(resultText);
+
+        if (resultObj.accion === 'ganancias' && typeof switchAdminTab === 'function') {
+          switchAdminTab('tab-dashboard');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (resultObj.accion === 'choferes' && typeof switchAdminTab === 'function') {
+          switchAdminTab('tab-drivers');
+        } else if (resultObj.accion === 'taller' && typeof switchAdminTab === 'function') {
+          switchAdminTab('tab-dashboard');
+          const alertsContainer = document.getElementById('dashboard-maintenance-alerts');
+          if (alertsContainer) alertsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        speakTextWithSelectedVoice(resultObj.respuesta);
+
+      } catch (err) {
+        console.error("Error estricto con Gemini:", err);
+        showToast("Error de Gemini: " + err.message.substring(0, 80), "error");
+        speakTextWithSelectedVoice("Lo siento, tuve un problema leyendo los datos.");
+      }
+    }
   </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-
+```html
 <!DOCTYPE html>
 <html lang="es" class="h-full bg-slate-50">
 <head>
@@ -2619,17 +2619,25 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: systemPrompt }] }],
-            generationConfig: { temperature: 0.2 } // Nivel bajo de creatividad para que sea exacto con el dinero
+            generationConfig: { 
+              temperature: 0.2, // Nivel bajo de creatividad para que sea exacto con el dinero
+              responseMimeType: "application/json" // OBLIGA A GEMINI A NO USAR FORMATOS RAROS
+            }
           })
         });
 
         if (!response.ok) {
-          throw new Error("El servidor de Google rechazó la consulta.");
+          const errText = await response.text();
+          throw new Error("Rechazo de Google: " + response.status + " " + errText);
         }
 
         const data = await response.json();
+        
+        if (!data.candidates || !data.candidates[0].content) {
+            throw new Error("Respuesta bloqueada por Google (Seguridad) o vacía.");
+        }
+
         let resultText = data.candidates[0].content.parts[0].text;
-        resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
         const resultObj = JSON.parse(resultText);
 
         // Ejecutar acciones visuales en pantalla según lo que Gemini decida
@@ -2649,7 +2657,8 @@ Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades:
 
       } catch (err) {
         console.error("Error estricto con Gemini:", err);
-        speakTextWithSelectedVoice("Hubo un problema de conexión con la inteligencia de Google. Por favor, asegúrate de que el botón de prueba de conexión en ajustes esté en verde.");
+        showToast("Error de Gemini: " + err.message.substring(0, 80), "error");
+        speakTextWithSelectedVoice("Hubo un error técnico. Revisa el letrero rojo en tu pantalla.");
       }
     }
   </script>

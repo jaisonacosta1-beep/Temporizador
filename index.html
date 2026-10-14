@@ -8318,7 +8318,7 @@
             `;
             settingsContainer.appendChild(geminiBlock);
             
-            const savedKey = localStorage.getItem('autorent_gemini_key') || '';
+            const savedKey = (adminCredentials && adminCredentials.geminiApiKey) ? adminCredentials.geminiApiKey : (localStorage.getItem('autorent_gemini_key') || '');
             document.getElementById('cfg-gemini-apikey').value = savedKey;
             
             clearInterval(checkSettingsTimer);
@@ -8330,7 +8330,14 @@
         const keyInput = document.getElementById('cfg-gemini-apikey').value.trim();
         const key = keyInput.replace(/[\s\n\r]/g, '');
         localStorage.setItem('autorent_gemini_key', key);
-        if (typeof showToast === 'function') showToast('✓ Clave de Gemini guardada', 'success');
+        
+        if (adminCredentials) {
+          adminCredentials.geminiApiKey = key;
+          appState.adminCreds = adminCredentials;
+          saveStateAndBroadcast();
+        }
+        
+        if (typeof showToast === 'function') showToast('✓ Clave de Gemini guardada y sincronizada', 'success');
       };
 
       window.testGeminiConnection = async function() {
@@ -8401,7 +8408,7 @@
           if (typeof showToast === 'function') showToast(msg, type === 'error' ? 'error' : type === 'success' ? 'success' : 'info');
         };
 
-        const apiKey = (localStorage.getItem('autorent_gemini_key') || '').trim().replace(/[\s\n\r]/g, '');
+        const apiKey = ((adminCredentials && adminCredentials.geminiApiKey) ? adminCredentials.geminiApiKey : (localStorage.getItem('autorent_gemini_key') || '')).trim().replace(/[\s\n\r]/g, '');
         if (!apiKey) {
           showScanStatus('⚠️ Primero guarda tu Clave Gemini en la pestaña Ajustes & Claves', 'error');
           event.target.value = '';
@@ -8556,7 +8563,7 @@
       const cleanTranscript = String(transcript || '').trim();
       if (!cleanTranscript) return;
 
-      const apiKey = (localStorage.getItem('autorent_gemini_key') || '').trim().replace(/[\s\n\r]/g, '');
+      const apiKey = ((adminCredentials && adminCredentials.geminiApiKey) ? adminCredentials.geminiApiKey : (localStorage.getItem('autorent_gemini_key') || '')).trim().replace(/[\s\n\r]/g, '');
       
       if (!apiKey) {
         const noKeyMsg = "Hola. Para poder responderte, primero pega y guarda tu clave API de Gemini en la pestaña Ajustes y Claves.";

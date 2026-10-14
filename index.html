@@ -1,4 +1,4 @@
-```html
+
 <!DOCTYPE html>
 <html lang="es" class="h-full bg-slate-50">
 <head>
@@ -2577,172 +2577,79 @@
 
     // EL "CEREBRO" DEL ASISTENTE: Entiende y ejecuta acciones visuales en pantalla
     async function processAIAssistantCommand(transcript) {
-      const text = transcript.toLowerCase();
-      const cleanText = text.replace(/[.,¿?]/g, '');
-
-      // --- 1. MOTOR AVANZADO GEMINI (Si hay llave configurada) ---
+      // 100% MOTOR AVANZADO GEMINI (Sin respaldos viejos)
       const apiKey = localStorage.getItem('autorent_gemini_key');
-      if (apiKey && apiKey.trim() !== '') {
-        try {
-          const gananciasHoy = document.getElementById('stat-net-profit') ? document.getElementById('stat-net-profit').textContent : '$0.00';
-          const autosTaller = appState.cars ? appState.cars.filter(c => c.status === 'Taller').length : 0;
-          let choferesInfo = "Ninguno";
-          if (appState.drivers && appState.drivers.length > 0) {
-            choferesInfo = appState.drivers.map(d => {
-              let status = "al día";
-              if (d.balance > 0) status = "debe $" + d.balance;
-              if (d.balance < 0) status = "tiene saldo a favor de +$" + Math.abs(d.balance);
-              return `${d.name} (${status})`;
-            }).join(", ");
-          }
+      
+      if (!apiKey || apiKey.trim() === '') {
+        speakTextWithSelectedVoice("Hola. Para poder entenderte, necesitas poner tu clave de Gemini en la sección de ajustes.");
+        return;
+      }
 
-          const systemPrompt = `Eres el Asistente Inteligente de "AutoRent Pro".
-Responde de forma natural, muy humana, conversacional y útil. NO uses formato markdown (ni asteriscos).
+      try {
+        // Recopilamos la información real de tu empresa para que Gemini la sepa
+        const gananciasHoy = document.getElementById('stat-net-profit') ? document.getElementById('stat-net-profit').textContent : '$0.00';
+        const autosTaller = appState.cars ? appState.cars.filter(c => c.status === 'Taller').length : 0;
+        let choferesInfo = "Ninguno";
+        if (appState.drivers && appState.drivers.length > 0) {
+          choferesInfo = appState.drivers.map(d => {
+            let status = "al día";
+            if (d.balance > 0) status = "debe $" + d.balance;
+            if (d.balance < 0) status = "tiene saldo a favor de +$" + Math.abs(d.balance);
+            return `${d.name} (${status})`;
+          }).join(", ");
+        }
+
+        const systemPrompt = `Eres el Asistente Inteligente de la empresa "AutoRent Pro".
+Responde de forma natural, muy humana, conversacional y directo al punto. NO uses asteriscos ni formatos raros.
 Tus datos actuales en la base de datos: 
 - Ganancia Neta Hoy: ${gananciasHoy}. 
 - Autos en taller: ${autosTaller}. 
-- Choferes y sus deudas: ${choferesInfo}.
+- Choferes y sus estados de cuenta: ${choferesInfo}.
 
 El usuario te dice: "${transcript}"
 
 Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades:
-          El usuario te dice: "${transcript}"
+- "respuesta": El texto hablado humano que le dirás al usuario analizando los datos que te di.
+- "accion": "ganancias" (si pregunta por dinero), "choferes" (si pregunta por deudas o nombres), "taller" (si pregunta por autos dañados), o "ninguna".`;
 
-          Devuelve ÚNICAMENTE un objeto JSON válido con 2 propiedades:
-          - "respuesta": El texto hablado que le dirás al usuario basándote en los datos.
-          - "accion": "ganancias" (dinero/caja), "choferes" (deudas/nombres), "taller" (autos/daños), o "ninguna".`;
-
-          let response = null;
-          let modeloGuardado = localStorage.getItem('autorent_gemini_model') || 'gemini-1.5-flash';
-          
-          response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modeloGuardado}:generateContent?key=${apiKey.trim()}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: systemPrompt }] }],
-              generationConfig: { temperature: 0.2 }
-            })
-          });
-
-          if (!response || !response.ok) throw new Error("API Gemini falló con el modelo actual");
-          const data = await response.json();
-          let resultText = data.candidates[0].content.parts[0].text;
-          resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
-          const resultObj = JSON.parse(resultText);
-
-          if (resultObj.accion === 'ganancias' && typeof switchAdminTab === 'function') {
-            switchAdminTab('tab-dashboard');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          } else if (resultObj.accion === 'choferes' && typeof switchAdminTab === 'function') {
-            switchAdminTab('tab-drivers');
-          } else if (resultObj.accion === 'taller' && typeof switchAdminTab === 'function') {
-            switchAdminTab('tab-dashboard');
-          }
-
-          speakTextWithSelectedVoice(resultObj.respuesta);
-          return; // Salir para no ejecutar el motor básico
-
-        } catch (err) {
-          console.warn("Fallo en Gemini, cambiando a Motor Básico:", err);
-        }
-      }
-
-      // --- 2. MOTOR BÁSICO DE RESPALDO ---
-      // 1. Búsqueda proactiva de Nombres de Choferes (Súper Inteligente)
-      let targetDriver = null;
-      for (let driver of appState.drivers) {
-        const names = driver.name.toLowerCase().split(' ');
-        // Mínimo 3 letras para evitar confusiones con conectores (el, la, de)
-        if (names.some(n => n.length >= 3 && cleanText.includes(n))) {
-          targetDriver = driver;
-          break;
-        }
-      }
-
-      if (targetDriver) {
-        switchAdminTab('tab-drivers');
-        const balInfo = formatDriverBalanceInfo(targetDriver);
+        let modeloGuardado = localStorage.getItem('autorent_gemini_model') || 'gemini-1.5-flash';
         
-        setTimeout(() => { openViewDriverModal(targetDriver.id); }, 400);
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modeloGuardado}:generateContent?key=${apiKey.trim()}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: systemPrompt }] }],
+            generationConfig: { temperature: 0.2 } // Nivel bajo de creatividad para que sea exacto con el dinero
+          })
+        });
 
-        let msg = `Encontré a ${targetDriver.name}. `;
-        if (balInfo.type === 'debt') msg += `Cuidado, tiene una ${balInfo.label} de ${balInfo.amount} dólares.`;
-        else if (balInfo.type === 'credit') msg += `Tiene un saldo a favor en su cuenta.`;
-        else msg += `Su cuenta está al día.`;
-
-        speakTextWithSelectedVoice(msg);
-        return; 
-      }
-
-      // 2. Motor de Intenciones (NLP Básico con expresiones regulares)
-      // Detecta frases naturales y variaciones de jerga en lugar de palabras exactas
-      const intenciones = {
-        ganancias: /(ganancia|resumen|dinero|cobrad|plata|caja|fue hoy|hicimos|chen chen|ingreso|recaudad|cuánto hay|balance|venta)/i,
-        taller:    /(taller|mantenimient|choque|falla|dañad|mecánico|revisad|aceite|alerta|problema|llanta|daño)/i,
-        deudas:    /(debe|mora|rojo|vencid|deud|moroso|pagado|atrasad|falta|quién no|quién falta|estado)/i,
-        whatsapp:  /(whatsapp|mensaje|estado de cuenta|escrib|mandar chat)/i,
-        socio:     /(socio|liquidación|debo|corte|inversionista|pagar|entregar)/i,
-        historial: /(ayer|historial|reciente|pasado|anterior)/i,
-        directorio: /(lista|directorio|choferes|conductores|todos)/i
-      };
-
-      if (intenciones.ganancias.test(cleanText)) {
-        switchAdminTab('tab-dashboard');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        const collected = document.getElementById('stat-collected').textContent;
-        const net = document.getElementById('stat-net-profit').textContent;
-        
-        document.getElementById('stat-collected').parentElement.parentElement.classList.add('ring-4', 'ring-emerald-400');
-        setTimeout(() => document.getElementById('stat-collected').parentElement.parentElement.classList.remove('ring-4', 'ring-emerald-400'), 3000);
-
-        speakTextWithSelectedVoice(`Entendido. Hasta el momento hay en caja un total cobrado de ${collected}, dejando una ganancia neta para ti de ${net}.`);
-      }
-      else if (intenciones.taller.test(cleanText)) {
-        switchAdminTab('tab-dashboard');
-        const alertsContainer = document.getElementById('dashboard-maintenance-alerts');
-        if (alertsContainer) alertsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-        const inShop = appState.cars.filter(c => c.status === 'Taller');
-        const faultCount = appState.faultReports ? appState.faultReports.length : 0;
-
-        let msg = `Revisando la flota. `;
-        if (inShop.length > 0) msg += `Hay ${inShop.length} vehículos en el taller actualmente. `;
-        if (faultCount > 0) msg += `Tienes ${faultCount} reporte de falla pendiente de revisión. `;
-        if (inShop.length === 0 && faultCount === 0) msg += `Todos los autos están operando bien, no hay reportes de fallas.`;
-
-        speakTextWithSelectedVoice(msg);
-      }
-      else if (intenciones.deudas.test(cleanText)) {
-        switchAdminTab('tab-dashboard');
-        const overdues = appState.drivers.filter(d => !d.billingPaused && getDriverOverdueInfo(d).overdueBalance > 0);
-        const grid = document.getElementById('dashboard-traffic-light-grid');
-        if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-        if (overdues.length > 0) {
-          speakTextWithSelectedVoice(`Hay ${overdues.length} conductores con saldo atrasado. Te los muestro en color rojo y amarillo en pantalla.`);
-        } else {
-          speakTextWithSelectedVoice(`Excelentes noticias, todos los conductores están al día o con saldo a favor.`);
+        if (!response.ok) {
+          throw new Error("El servidor de Google rechazó la consulta.");
         }
-      }
-      else if (intenciones.whatsapp.test(cleanText)) {
-        speakTextWithSelectedVoice("Abriendo ventana para enviar el estado de cuenta por WhatsApp.");
-        window.open('https://wa.me/?text=Hola,%20te%20escribo%20desde%20la%20administración%20para%20enviarte%20tu%20estado%20de%20cuenta.', '_blank');
-      }
-      else if (intenciones.socio.test(cleanText)) {
-        switchAdminTab('tab-partners');
-        speakTextWithSelectedVoice("Abriendo las liquidaciones de los socios. Aquí verás el efectivo que retienen y lo que falta depositarles.");
-      }
-      else if (intenciones.historial.test(cleanText)) {
-        switchAdminTab('tab-dashboard');
-        speakTextWithSelectedVoice("Mostrando los últimos pagos de la tabla general de transacciones.");
-      }
-      else if (intenciones.directorio.test(cleanText) || cleanText.includes("busca") || cleanText.includes("muéstra")) {
-        switchAdminTab('tab-drivers');
-        speakTextWithSelectedVoice(`Abriendo el directorio. Hay ${appState.drivers.length} conductores registrados.`);
-      }
-      else {
-        speakTextWithSelectedVoice("No logré entenderte del todo. Pregúntame algo como: ¿cuánta plata hay en caja?, ¿quiénes están morosos?, o simplemente di el nombre de un chofer.");
+
+        const data = await response.json();
+        let resultText = data.candidates[0].content.parts[0].text;
+        resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const resultObj = JSON.parse(resultText);
+
+        // Ejecutar acciones visuales en pantalla según lo que Gemini decida
+        if (resultObj.accion === 'ganancias' && typeof switchAdminTab === 'function') {
+          switchAdminTab('tab-dashboard');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (resultObj.accion === 'choferes' && typeof switchAdminTab === 'function') {
+          switchAdminTab('tab-drivers');
+        } else if (resultObj.accion === 'taller' && typeof switchAdminTab === 'function') {
+          switchAdminTab('tab-dashboard');
+          const alertsContainer = document.getElementById('dashboard-maintenance-alerts');
+          if (alertsContainer) alertsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Hablar la respuesta inteligente de Gemini
+        speakTextWithSelectedVoice(resultObj.respuesta);
+
+      } catch (err) {
+        console.error("Error estricto con Gemini:", err);
+        speakTextWithSelectedVoice("Hubo un problema de conexión con la inteligencia de Google. Por favor, asegúrate de que el botón de prueba de conexión en ajustes esté en verde.");
       }
     }
   </script>
